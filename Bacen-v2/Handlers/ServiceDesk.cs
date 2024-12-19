@@ -10,6 +10,7 @@ using System.Globalization;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using System.Net;
+using Microsoft.Playwright;
 
 namespace Bacen_v2.Handlers
 {
@@ -100,9 +101,11 @@ namespace Bacen_v2.Handlers
                     ["titulo"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "title")?["valueCaption"],
                     ["descricao"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "description")?["valueCaption"],
                     ["status"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "status")?["valueCaption"],
+                    ["de"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "CustomColumn155sr")?["valueCaption"],
+                    ["usuarioSolicitante"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "request_user")?["valueCaption"],
                     ["prioridade"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "priority")?["valueCaption"],
                     ["categoria"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "problem_type")?["valueCaption"],
-                    ["sla"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "problem_type")?["valueCaption"],
+                    ["sla"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "CustomColumn118sr")?["valueCaption"],
                     ["notas"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "notes")?["value"]
                 };
 
@@ -115,18 +118,29 @@ namespace Bacen_v2.Handlers
                     foreach (var column in customColumns)
                     {
                         var keyCaption = column["keyCaption"]?.ToString();
-                        var value = column["valueCaption"]?.ToString();
+                        var valueCaption = column["valueCaption"]?.ToString() ?? "Não preenchido";
+                        var value = column["value"]?.ToString() ?? "Não preenchido"; // Captura o valor numérico bruto
+                        var rawValue = column["value"]?.ToString(); // Captura o valor bruto, se necessário
 
-                        if (!string.IsNullOrEmpty(keyCaption) && !string.IsNullOrEmpty(value))
+                        Console.WriteLine($"KeyCaption: {keyCaption}, ValueCaption: {valueCaption}, RawValue: {rawValue}, Value {value}");
+
+                        if (!string.IsNullOrEmpty(keyCaption))
                         {
-                            // Formatar o keyCaption para camelCase
                             var formattedKeyCaption = ToCamelCase(keyCaption);
-
-                            // Adicionar ao JSON de detalhes úteis
-                            detalhesUteis[formattedKeyCaption] = value;
+                            detalhesUteis[formattedKeyCaption] = valueCaption;
                         }
                     }
                 }
+
+
+                if (customColumns != null)
+                {
+                    foreach (var column in customColumns)
+                    {
+                        Console.WriteLine($"Key: {column["key"]}, KeyCaption: {column["keyCaption"]}, ValueCaption: {column["valueCaption"]}");
+                    }
+                }
+
 
                 string ToCamelCase(string text)
                 {
@@ -182,137 +196,97 @@ namespace Bacen_v2.Handlers
                 return new List<JObject>();
             }
         }
-        public async Task BaixarAnexoAsync(int chamadoId, string fileId, string fileName)
-        {
-            try
-            {
-                // Construir URL de download
-                var url = $"{_baseUrl}/getFile?table=service_req&id={chamadoId}&getFile={fileId}";
 
-                // Fazer a requisição GET
-                var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
-
-                if (response.StatusCode == HttpStatusCode.Forbidden)
-                {
-                    Console.WriteLine("Endpoint não suporta chamadas programáticas. Tentando baixar via navegador...");
-                    await BaixarAnexoViaNavegadorAsync(chamadoId, fileId, fileName);
-                    return;
-                }
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    Console.WriteLine($"Erro ao baixar anexo {fileName} do chamado {chamadoId}: {response.StatusCode}");
-                    return;
-                }
-
-                // Validar tipo de conteúdo retornado
-                var contentType = response.Content.Headers.ContentType?.MediaType;
-                if (contentType == null || !contentType.Contains("application/pdf"))
-                {
-                    Console.WriteLine($"O conteúdo retornado não parece ser um PDF válido. Tipo de conteúdo: {contentType}");
-                    return;
-                }
-
-                // Salvar o conteúdo em arquivo
-                var filePath = Path.Combine("Data", "processed", fileName);
-                Directory.CreateDirectory(Path.GetDirectoryName(filePath)); // Criar diretórios se necessário
-
-                using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
-                {
-                    await response.Content.CopyToAsync(fileStream);
-                }
-
-                Console.WriteLine($"Anexo {fileName} baixado com sucesso em: {filePath}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Erro ao processar download do anexo {fileName}: {ex.Message}");
-            }
-        }
-
-        // Caso a função via requisição não funcione
-        public async Task BaixarAnexoViaNavegadorAsync(int chamadoId, string fileId, string fileName)
+        public async Task<string> BaixarAnexoComPlaywrightAsync(int chamadoId, string fileId, string fileName)
         {
             try
             {
                 var url = $"{_baseUrl}/getFile?table=service_req&id={chamadoId}&getFile={fileId}";
-
-                // Configurar o Selenium WebDriver em modo headless
-                var options = new ChromeOptions();
                 var downloadDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Data", "processed");
-                options.AddUserProfilePreference("download.default_directory", downloadDirectory);
-                options.AddUserProfilePreference("download.prompt_for_download", false);
-                options.AddUserProfilePreference("plugins.always_open_pdf_externally", true); // Baixar PDFs diretamente
-
-                // Ativar o modo headless
-                //options.AddArgument("--headless"); // Executar sem interface gráfica
-                options.AddArgument("--disable-gpu"); // Melhor performance no modo headless
-                options.AddArgument("--no-sandbox"); // Evitar problemas de sandbox em alguns sistemas
-                options.AddArgument("--disable-dev-shm-usage"); // Usar memória compartilhada de forma eficiente
-
                 Directory.CreateDirectory(downloadDirectory);
 
-                using (var driver = new ChromeDriver(options))
+                // Configurar o Playwright para downloads
+                var playwright = await Playwright.CreateAsync();
+                var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
+                var context = await browser.NewContextAsync(new BrowserNewContextOptions
                 {
-                    // Navegar para o domínio base para adicionar cookies
-                    driver.Navigate().GoToUrl(_baseUrl);
+                    AcceptDownloads = true
+                });
+                var page = await context.NewPageAsync();
 
-                    // Adicionar cookies de autenticação
-                    driver.Manage().Cookies.AddCookie(new OpenQA.Selenium.Cookie("JSESSIONID", GetCookieValue("JSESSIONID")));
-                    driver.Manage().Cookies.AddCookie(new OpenQA.Selenium.Cookie("__goc_session__", GetCookieValue("__goc_session__")));
+                // Navegar para o URL do arquivo
+                await page.GotoAsync(url);
 
-                    // Atualizar a página para aplicar os cookies
-                    driver.Navigate().Refresh();
+                // Esperar pelo download do arquivo
+                var download = await page.WaitForDownloadAsync();
 
-                    // Navegar para o URL de download
-                    driver.Navigate().GoToUrl(url);
+                // Salvar o arquivo no diretório especificado
+                var filePath = Path.Combine(downloadDirectory, fileName);
+                await download.SaveAsAsync(filePath);
 
-                    // Esperar pelo download (não checar mais diretamente)
-                    Console.WriteLine("Download iniciado...");
-                    await Task.Delay(10000); // Tempo suficiente para concluir o download
-                }
+                Console.WriteLine($"Anexo {fileName} baixado com sucesso em: {filePath}");
+                await browser.CloseAsync();
+
+                return filePath;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Erro ao baixar o anexo {fileName} via navegador: {ex.Message}");
+                Console.WriteLine($"Erro ao baixar o anexo {fileName} com Playwright: {ex.Message}");
+                return null;
             }
         }
-        public async Task BaixarAnexosComSeleniumAsync(List<(int chamadoId, string fileId, string fileName)> anexos)
+
+        public async Task<List<string>> BaixarAnexosComPlaywrightAsync(List<(int chamadoId, string fileId, string fileName)> anexos)
         {
-            var options = new ChromeOptions();
-            var downloadDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Data", "processed");
-            options.AddUserProfilePreference("download.default_directory", downloadDirectory);
-            options.AddUserProfilePreference("download.prompt_for_download", false);
-            options.AddUserProfilePreference("plugins.always_open_pdf_externally", true);
-            //options.AddArgument("--headless");
-
-            Directory.CreateDirectory(downloadDirectory);
-
-            using (var driver = new ChromeDriver(options))
+            var downloadPaths = new List<string>();
+            try
             {
-                // Navegar para o domínio base e autenticar uma vez
-                driver.Navigate().GoToUrl(_baseUrl);
-                driver.Manage().Cookies.AddCookie(new OpenQA.Selenium.Cookie("JSESSIONID", GetCookieValue("JSESSIONID")));
-                driver.Manage().Cookies.AddCookie(new OpenQA.Selenium.Cookie("__goc_session__", GetCookieValue("__goc_session__")));
-                driver.Navigate().Refresh();
+                var downloadDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Data", "processed");
+                Directory.CreateDirectory(downloadDirectory);
+
+                var playwright = await Playwright.CreateAsync();
+                var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
+                var context = await browser.NewContextAsync(new BrowserNewContextOptions
+                {
+                    AcceptDownloads = true
+                });
+                var page = await context.NewPageAsync();
 
                 foreach (var (chamadoId, fileId, fileName) in anexos)
                 {
                     try
                     {
                         var url = $"{_baseUrl}/getFile?table=service_req&id={chamadoId}&getFile={fileId}";
-                        driver.Navigate().GoToUrl(url);
 
-                        Console.WriteLine($"Download iniciado para o arquivo: {fileName}");
-                        await Task.Delay(5000); // Aguarde o download
+                        // Navegar para o URL do arquivo
+                        await page.GotoAsync(url);
+
+                        // Esperar pelo download do arquivo
+                        var download = await page.WaitForDownloadAsync();
+
+                        // Salvar o arquivo no diretório especificado
+                        var filePath = Path.Combine(downloadDirectory, fileName);
+                        await download.SaveAsAsync(filePath);
+                        downloadPaths.Add(filePath);
+
+                        Console.WriteLine($"Anexo {fileName} baixado com sucesso em: {filePath}");
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Erro ao baixar o anexo {fileName}: {ex.Message}");
                     }
                 }
+
+                await browser.CloseAsync();
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao processar anexos com Playwright: {ex.Message}");
+            }
+
+            return downloadPaths;
         }
+
 
         // Método auxiliar para obter valores de cookies
         private string GetCookieValue(string cookieName)

@@ -11,6 +11,10 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using System.Net;
 using Microsoft.Playwright;
+using Bacen_v2.Utils;
+using System.Text.RegularExpressions;
+using Newtonsoft.Json;
+using static OpenQA.Selenium.PrintOptions;
 
 namespace Bacen_v2.Handlers
 {
@@ -109,38 +113,34 @@ namespace Bacen_v2.Handlers
                     ["notas"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "notes")?["value"]
                 };
 
-                // Verificar e adicionar automaticamente todas as CustomColumns usando keyCaption
+                // Processar e formatar CustomColumns
                 var customColumns = chamadoDetalhes["info"]?
                     .Where(info => info["key"]?.ToString().StartsWith("CustomColumn") == true);
 
                 if (customColumns != null)
                 {
+                    var customColumnsStringBuilder = new StringBuilder();
+
                     foreach (var column in customColumns)
                     {
-                        var keyCaption = column["keyCaption"]?.ToString();
+                        var keyCaption = column["keyCaption"]?.ToString() ?? "Sem Nome";
                         var valueCaption = column["valueCaption"]?.ToString() ?? "Não preenchido";
-                        var value = column["value"]?.ToString() ?? "Não preenchido"; // Captura o valor numérico bruto
-                        var rawValue = column["value"]?.ToString(); // Captura o valor bruto, se necessário
+                        var valores = new[] { "Instituição Requerente", "Config SLA Data Prazo Análise", "Contador N2", "Etapa(nome e versão api)", "Status SLA", "SLA Horas Úteis", "Usuário Solicitante:", "Equipe solucionadora", "Especialista atribuído:", "Destinatário", "Contador Requisitante", "Tipo do Chamado", "Contador Prazo SLA", "VIP" };
 
-                        Console.WriteLine($"KeyCaption: {keyCaption}, ValueCaption: {valueCaption}, RawValue: {rawValue}, Value {value}");
-
-                        if (!string.IsNullOrEmpty(keyCaption))
+                        if (valueCaption != "" && IsValido(keyCaption, valores))
                         {
-                            var formattedKeyCaption = ToCamelCase(keyCaption);
-                            detalhesUteis[formattedKeyCaption] = valueCaption;
+                            customColumnsStringBuilder.AppendLine($"{keyCaption}: {valueCaption}\n");
                         }
+
                     }
+
+                    // Adicionar CustomColumns formatadas ao detalhesUteis
+                    detalhesUteis["customColumns"] = customColumnsStringBuilder.ToString();
                 }
-
-
-                if (customColumns != null)
+                else
                 {
-                    foreach (var column in customColumns)
-                    {
-                        Console.WriteLine($"Key: {column["key"]}, KeyCaption: {column["keyCaption"]}, ValueCaption: {column["valueCaption"]}");
-                    }
+                    detalhesUteis["customColumns"] = "Nenhuma informação adicional encontrada.";
                 }
-
 
                 string ToCamelCase(string text)
                 {
@@ -164,6 +164,11 @@ namespace Bacen_v2.Handlers
                 Console.WriteLine($"Erro ao processar detalhes do chamado {chamadoId}: {ex.Message}");
                 return null;
             }
+        }
+
+        private static bool IsValido(string keyCaption, string[] valores)
+        {
+            return !Array.Exists(valores, s => s == keyCaption);
         }
 
         public async Task<List<JObject>> GetAnexosDoChamadoAsync(int chamadoId)
@@ -205,7 +210,6 @@ namespace Bacen_v2.Handlers
                 var downloadDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Data", "processed");
                 Directory.CreateDirectory(downloadDirectory);
 
-                // Configurar o Playwright para downloads
                 var playwright = await Playwright.CreateAsync();
                 var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
                 var context = await browser.NewContextAsync(new BrowserNewContextOptions
@@ -225,66 +229,16 @@ namespace Bacen_v2.Handlers
                 await download.SaveAsAsync(filePath);
 
                 Console.WriteLine($"Anexo {fileName} baixado com sucesso em: {filePath}");
+
                 await browser.CloseAsync();
 
                 return filePath;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Erro ao baixar o anexo {fileName} com Playwright: {ex.Message}");
+                Console.WriteLine($"Erro ao baixar o anexo {fileName}: {ex.Message}");
                 return null;
             }
-        }
-
-        public async Task<List<string>> BaixarAnexosComPlaywrightAsync(List<(int chamadoId, string fileId, string fileName)> anexos)
-        {
-            var downloadPaths = new List<string>();
-            try
-            {
-                var downloadDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Data", "processed");
-                Directory.CreateDirectory(downloadDirectory);
-
-                var playwright = await Playwright.CreateAsync();
-                var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
-                var context = await browser.NewContextAsync(new BrowserNewContextOptions
-                {
-                    AcceptDownloads = true
-                });
-                var page = await context.NewPageAsync();
-
-                foreach (var (chamadoId, fileId, fileName) in anexos)
-                {
-                    try
-                    {
-                        var url = $"{_baseUrl}/getFile?table=service_req&id={chamadoId}&getFile={fileId}";
-
-                        // Navegar para o URL do arquivo
-                        await page.GotoAsync(url);
-
-                        // Esperar pelo download do arquivo
-                        var download = await page.WaitForDownloadAsync();
-
-                        // Salvar o arquivo no diretório especificado
-                        var filePath = Path.Combine(downloadDirectory, fileName);
-                        await download.SaveAsAsync(filePath);
-                        downloadPaths.Add(filePath);
-
-                        Console.WriteLine($"Anexo {fileName} baixado com sucesso em: {filePath}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Erro ao baixar o anexo {fileName}: {ex.Message}");
-                    }
-                }
-
-                await browser.CloseAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Erro ao processar anexos com Playwright: {ex.Message}");
-            }
-
-            return downloadPaths;
         }
 
 
@@ -306,5 +260,144 @@ namespace Bacen_v2.Handlers
 
             return string.Empty;
         }
+
+
+        // Método para poder verificar se o chamado já está aberto no topdesk por meio das notas ("Protocolo Interno do Sicoob:")
+        public bool VerificarChamadoAberto(string notas)
+        {
+            if (notas.Contains("Protocolo Interno do Sicoob:", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("Chamado já processado!");
+                return true;
+            }
+            return false;
+        }
+
+        // Adicionar número do protocolo às notas após abertura do chamado
+        public async Task AdicionarNumeroProtocoloAsync(string idServiceDesk, string numeroProtocolo, string sessionID, string gocSession)
+        {
+            try
+            {
+                // Verificar se o número do protocolo foi capturado
+                if (string.IsNullOrEmpty(numeroProtocolo))
+                {
+                    Console.WriteLine($"Número do protocolo não encontrado para o chamado {idServiceDesk}. Nenhuma nota será adicionada.");
+                    return;
+                }
+
+                // URL do chamado
+                var url = $"{_baseUrl}/api/v1/sr/{idServiceDesk}";
+
+                // Corpo da requisição
+                var body = new
+                {
+                    id = idServiceDesk.ToString(),
+                    info = new[]
+                    {
+                new
+                {
+                    key = "notes",
+                    value = new[]
+                    {
+                        new
+                        {
+                            userName = "Marco Aurélio da Silva Martins",
+                            text = $"Protocolo interno do Sicoob: {numeroProtocolo}"
+                        }
+                    }
+                }
+            }
+                };
+
+                // Preparar o conteúdo da requisição
+                var content = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
+
+                // Adicionar os cookies nos cabeçalhos
+                _httpClient.DefaultRequestHeaders.Remove("Cookie");
+                _httpClient.DefaultRequestHeaders.Add("Cookie", $"JSESSIONID={sessionID}; __goc_session__={gocSession}");
+
+
+                // Enviar a requisição PATCH
+                var response = await _httpClient.PutAsync(url, content);
+
+                // Verificar a resposta
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorDetails = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Erro ao adicionar número do protocolo: {response.StatusCode}");
+                    Console.WriteLine($"Detalhes: {errorDetails}");
+                }
+                else
+                {
+                    Console.WriteLine($"Número do protocolo {numeroProtocolo} adicionado com sucesso ao chamado {idServiceDesk}.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao adicionar número do protocolo: {ex.Message}");
+            }
+        }
+
+
+        // Mudar status, especialista atribuído e equipe solucionadora após abertura do chamado
+        public async Task AtualizarChamadoAsync(string idServiceDesk, string sessionID, string gocSession)
+        {
+            try
+            {
+                // URL para atualização do chamado
+                var url = $"{_baseUrl}/api/v1/sr/{idServiceDesk}";
+
+                // Corpo da requisição
+                var body = new
+                {
+                    id = idServiceDesk.ToString(),
+                    info = new[]
+                    {
+                new
+                {
+                    key = "status",
+                    value = "8"
+                },
+                new
+                {
+                    key = "responsibility",
+                    value = "1874"
+                },
+                new
+                {
+                    key = "CustomColumn16sr",
+                    value = "N2 ATENDIMENTO"
+                }
+            }
+                };
+
+                // Conteúdo da requisição
+                var content = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
+
+                // Headers da requisição
+                _httpClient.DefaultRequestHeaders.Remove("Cookie");
+                _httpClient.DefaultRequestHeaders.Add("Cookie", $"JSESSIONID={sessionID}; __goc_session__={gocSession}");
+
+                // Enviar requisição PATCH
+                var response = await _httpClient.PutAsync(url, content);
+
+                // Validar resposta
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorDetails = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Erro ao atualizar chamado {idServiceDesk}: {response.StatusCode}");
+                    Console.WriteLine($"Detalhes do erro: {errorDetails}");
+                }
+                else
+                {
+                    Console.WriteLine($"Chamado {idServiceDesk} atualizado com sucesso.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao atualizar chamado {idServiceDesk}: {ex.Message}");
+            }
+        }
+
     }
 }

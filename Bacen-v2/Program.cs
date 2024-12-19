@@ -7,6 +7,7 @@ using Bacen_v2.Handlers;
 using Bacen_v2.Handlers;
 using Bacen_v2.Utils;
 using Newtonsoft.Json.Linq;
+using OpenQA.Selenium;
 
 class Program
 {
@@ -73,6 +74,7 @@ class Program
                         continue;
                     }
 
+
                     var id = detalhesChamado["id"]?.ToString();
                     var titulo = detalhesChamado["titulo"]?.ToString();
                     var descricao = detalhesChamado["descricao"]?.ToString();
@@ -83,43 +85,15 @@ class Program
                     var categoria = detalhesChamado["categoria"]?.ToString().ToUpper();
                     var sla = detalhesChamado["sla"]?.ToString();
                     var notas = detalhesChamado["notas"]?.ToString();
+                    var customColumns = detalhesChamado["customColumns"]?.ToString();
 
-                    // Obter as customColumns
-                    var customColumns = new Dictionary<string, string>();
-
-                    var customColumnsData = detalhesChamado["info"]?
-                    .Where(info => info["key"]?.ToString().StartsWith("CustomColumn") == true);
-
-                    if (customColumnsData != null)
+                    if (serviceDeskHandler.VerificarChamadoAberto(notas) == true)
                     {
-                        foreach (var column in customColumnsData)
-                        {
-                            Console.WriteLine($"Key: {column["keyCaption"]}, Value: {column["valueCaption"]}");
-                        }
+                        // pular para o proximo chamado
+                        Console.WriteLine($"Chamado ID: {chamadoId} já foi processado. Pulando...");
+                        continue;
                     }
-
-
-                    if (customColumnsData != null)
-                    {
-                        foreach (var column in customColumnsData)
-                        {
-                            var keyCaption = column["keyCaption"]?.ToString();
-                            var value = column["valueCaption"]?.ToString() ?? "Não preenchido"; // Valor padrão para campos vazios
-
-                            if (!string.IsNullOrEmpty(keyCaption))
-                            {
-                                // Adicionar ao dicionário
-                                customColumns[keyCaption] = value;
-                            }
-                        }
-                    }
-
-                    // Exibir as CustomColumns para depuração
-                    foreach (var column in customColumns)
-                    {
-                        Console.WriteLine($"{column.Key}: {column.Value}");
-                    }
-
+                                
 
                     Console.WriteLine($"Processando chamado ID: {chamadoId}, Título: {titulo}, Categoria: {categoria}");
 
@@ -137,12 +111,26 @@ class Program
                         {
                             Console.WriteLine($"Baixando anexo: {fileName}");
                             var filePath = await serviceDeskHandler.BaixarAnexoComPlaywrightAsync(int.Parse(chamadoId), fileId, fileName);
-                            anexoPaths.Add(filePath);
+                            if (!string.IsNullOrEmpty(filePath))
+                            {
+                                anexoPaths.Add(filePath);
+                            }
                         }
                     }
 
+
                     // Abrir chamado no TopDesk
-                    await topDeskHandler.AbrirChamadoAsync(categoria, titulo, id, descricao, de, usuarioSolicitante, sla, customColumns, anexoPaths.Count > 0 ? anexoPaths[0] : null);
+                    var numeroProtocolo = await topDeskHandler.AbrirChamadoAsync(categoria, titulo, id, descricao, de, usuarioSolicitante, sla, customColumns, notas, anexoPaths.Count > 0 ? anexoPaths[0] : null);
+
+                    // Verificar se o chamado possui um número de protocolo gerado com sucesso
+                    if (!string.IsNullOrEmpty(numeroProtocolo))
+                    {
+                        // Adicionar número do protocolo às notas do chamado
+                        await serviceDeskHandler.AdicionarNumeroProtocoloAsync(chamadoId, numeroProtocolo, authHandler.SessionId, authHandler.GocSession);
+                    }
+
+                    // Atualizar informações no SD
+                    await serviceDeskHandler.AtualizarChamadoAsync(id, authHandler.SessionId, authHandler.GocSession);
 
                     Console.WriteLine($"Chamado ID: {chamadoId} processado com sucesso.");
                 }

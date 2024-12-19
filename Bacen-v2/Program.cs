@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Bacen_v2.Utils; // Para utilitários como Logger e Constants
 using Bacen_v2.Handlers; // Para manipuladores como AuthHandler e outros
 using Newtonsoft.Json.Linq;
+using OpenQA.Selenium.DevTools.V129.Security;
 
 class Program
 {
@@ -54,24 +55,17 @@ class Program
             // Inicializar ServiceDesk com JSESSIONID
             var serviceDeskHandler = new ServiceDesk(config, authHandler.SessionId, authHandler.GocSession);
 
+
             while (true)
             {
                 Console.WriteLine("Escolha uma opção:");
                 Console.WriteLine("1 - Listar chamados com status 'ENCAMINHADO N2 ATENDIMENTO'");
                 Console.WriteLine("2 - Consultar detalhes de um chamado específico pelo ID");
+                Console.WriteLine("3 - Testar Topdesk");
+                Console.WriteLine("4 - Testar TopDeskHandler");
                 Console.WriteLine("0 - Sair");
 
-                if (!int.TryParse(Console.ReadLine(), out int opcao) || opcao < 0 || opcao > 2)
-                {
-                    Console.WriteLine("Opção inválida. Tente novamente.");
-                    continue;
-                }
-
-                if (opcao == 0)
-                {
-                    Console.WriteLine("Encerrando o programa.");
-                    break;
-                }
+                int opcao = int.Parse(Console.ReadLine()!);
 
                 switch (opcao)
                 {
@@ -81,12 +75,22 @@ class Program
                     case 2:
                         await ConsultarChamadoEspecifico(serviceDeskHandler);
                         break;
+                    case 3:
+                        await TestarTopDesk();
+                        break;
+                    case 4:
+                        await TestarTopDeskHandler();
+                        break;
+                    case 0:
+                        Console.WriteLine("Saindo...");
+                        return;
+                    default:
+                        Console.WriteLine("Opção inválida. Tente novamente.");
+                        break;
                 }
 
                 Divisao();
             }
-
-            Logger.Log("Inicialização concluída com sucesso.");
         }
         catch (Exception ex)
         {
@@ -145,7 +149,7 @@ class Program
 
         if (detalhesChamado != null)
         {
-            Console.WriteLine($"Detalhes do chamado {chamadoId}:\n{detalhesChamado}");
+            Console.WriteLine($"Detalhes do chamado {chamadoId}:{ detalhesChamado}");
 
             // Obter anexos do chamado
             var anexos = await serviceDeskHandler.GetAnexosDoChamadoAsync(chamadoId);
@@ -153,7 +157,6 @@ class Program
             if (anexos.Count > 0)
             {
                 Console.WriteLine($"Encontrados {anexos.Count} anexos no chamado {chamadoId}:");
-
                 foreach (var anexo in anexos)
                 {
                     var fileId = anexo["fileId"]?.ToString();
@@ -161,7 +164,7 @@ class Program
 
                     if (!string.IsNullOrEmpty(fileId) && !string.IsNullOrEmpty(fileName))
                     {
-                        // Delegar o download ao ServiceDesk
+                        // Baixar anexo
                         await serviceDeskHandler.BaixarAnexoAsync(chamadoId, fileId, fileName);
                     }
                 }
@@ -174,6 +177,42 @@ class Program
         else
         {
             Console.WriteLine($"Erro ao obter detalhes do chamado {chamadoId}.");
+        }
+    }
+
+    private static async Task TestarTopDesk()
+    {
+        Console.Clear();
+        var topDesk = new TopDeskAuth(ConfigLoader.Load("Configs/appsettings.json"));
+        await topDesk.LoginAsync();
+    }
+
+    private static async Task TestarTopDeskHandler()
+    {
+        Console.Clear();
+        try
+        {
+            var config = ConfigLoader.Load("Configs/appsettings.json");
+            var jsonFilePath = "Configs/topdesk_links.json";
+            var fieldMappingsJsonPath = "Configs/chamados.json";
+            var topDeskAuth = new TopDeskAuth(config);
+
+            // Realizar login no TopDesk
+            await topDeskAuth.LoginAsync();
+
+            var topDeskHandler = new TopDeskHandler(jsonFilePath, fieldMappingsJsonPath, topDeskAuth);
+
+            // Listar tipos de chamados
+            topDeskHandler.ListarTiposChamados();
+
+            // Abrir um chamado
+            Console.WriteLine("Digite o tipo de chamado que deseja abrir:");
+            string tipoChamado = Console.ReadLine();
+            await topDeskHandler.AbrirChamadoAsync(tipoChamado, "teste", "#00000", "teste");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao testar TopDeskHandler: {ex.Message}");
         }
     }
 

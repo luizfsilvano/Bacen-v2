@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using Bacen_v2.Utils;
@@ -36,28 +37,29 @@ namespace Bacen_v2.Handlers
             _auth = auth; // Instância do TopDeskAuth
         }
 
-        public async Task AbrirChamadoAsync(
-    string tipoChamado,
-    string titulo,
-    string id,
-    string descricao,
-    string de,
-    string usuarioSolicitante,
-    string sla,
-    Dictionary<string, string> customColumns,
-    string anexoPath = null
-)
+        public async Task<string> AbrirChamadoAsync(
+            string tipoChamado,
+            string titulo,
+            string id,
+            string descricao,
+            string de,
+            string usuarioSolicitante,
+            string sla,
+            string customColumns,
+            string notes,
+            string anexoPath = null
+        )
         {
             if (!_links.TryGetValue(tipoChamado, out string url))
             {
                 Console.WriteLine($"Tipo de chamado '{tipoChamado}' não encontrado.");
-                return;
+                return null;
             }
 
             if (!_fieldMappings.TryGetValue(tipoChamado, out var fields))
             {
                 Console.WriteLine($"Mapeamento de campos para o tipo de chamado '{tipoChamado}' não encontrado.");
-                return;
+                return null;
             }
 
             try
@@ -95,7 +97,7 @@ namespace Bacen_v2.Handlers
                 if (frameLocator == null)
                 {
                     Console.WriteLine("Nenhum iframe correspondente foi encontrado.");
-                    return;
+                    return null;
                 }
 
                 // Preencher os campos dinamicamente
@@ -118,15 +120,15 @@ namespace Bacen_v2.Handlers
                     var descricaoInput = frameLocator.Locator(descricaoSelector);
                     await descricaoInput.WaitForAsync(new LocatorWaitForOptions { Timeout = 60000 });
 
-                    // Formatar customColumns como string
-                    var customColumnsFormatted = customColumns.Count > 0
-                        ? string.Join(Environment.NewLine, customColumns.Select(kv =>
-                            $"{kv.Key}: {(string.IsNullOrEmpty(kv.Value) ? "Não informado" : kv.Value)}"))
-                        : "Nenhum dado adicional.";
+                    // Reduzir o valor do SLA em um dia
+                    if (DateTime.TryParseExact(sla, "dd-MM-yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime slaDate))
+                    {
+                        slaDate = slaDate.AddDays(-1);
+                        sla = slaDate.ToString("dd-MM-yyyy HH:mm:ss");
+                    }
 
                     // Preencher o campo de descrição
-                    await descricaoInput.FillAsync($@"
-De: {de}
+                    await descricaoInput.FillAsync($@"De: {de}
  
 Usuário Solicitante: {usuarioSolicitante}
  
@@ -140,12 +142,14 @@ Descrição:
 {descricao}
 
 CustomColumns:
-{customColumnsFormatted} (em desenvolvimento)
- 
-Prazo de SLA: {sla}
+--------------------------------
+{customColumns}Notas:
+{notes}
+--------------------------------
+
+Prazo SLA: {sla}
 ");
                 }
-
 
 
                 if (fields.TryGetValue("impacto", out string impactoSelector))
@@ -170,29 +174,47 @@ Prazo de SLA: {sla}
                 // Submeter o formulário
                 //Logger.Log("Chamado não aberto, está em teste");
                 Console.WriteLine("Enviando o chamado...");
+                var navigationTask = page.WaitForNavigationAsync();
                 await frameLocator.Locator("input#button_submit").ClickAsync();
 
-                // Sleep para aguardar o redirecionamento
-                await Task.Delay(15000);
+                await navigationTask;
 
-                // Verificar sucesso
-                var successMessage = await page.Locator("text=Obrigado!").IsVisibleAsync();
-                if (successMessage)
+                // Verificar se houve redirecionamento
+                var currentUrl = page.Url;
+                if (currentUrl != url)
                 {
-                    Console.WriteLine("Chamado aberto com sucesso!");
+                    Console.WriteLine($"Chamado aberto com sucesso. Redirecionado para: {currentUrl}");
+
+                    // Capturar o número do protocolo na página redirecionada
+                    var protocoloText = await page.Locator("text=Protocolo interno do Sicoob:").TextContentAsync();
+                    if (!string.IsNullOrEmpty(protocoloText))
+                    {
+                        var match = System.Text.RegularExpressions.Regex.Match(protocoloText, @"\bI\d{4}-\d{6}\b");
+                        if (match.Success)
+                        {
+                            var numeroProtocolo = match.Value;
+                            Console.WriteLine($"Número do protocolo capturado: {numeroProtocolo}");
+                            Console.ReadLine();
+                            return numeroProtocolo;
+                        }
+                    }
+
+                    Console.WriteLine("Número do protocolo não encontrado na página redirecionada.");
+                    Console.ReadLine();
+                    return null;
                 }
                 else
                 {
-                    Console.WriteLine("Falha ao abrir o chamado. Verifique o formulário e os dados fornecidos.");
+                    Console.WriteLine("Falha ao abrir o chamado. Não houve redirecionamento.");
+                    Console.ReadLine();
+                    return null;
                 }
-            }
-            catch (TimeoutException ex)
-            {
-                Console.WriteLine($"Erro de timeout: {ex.Message}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Erro inesperado: {ex.Message}");
+                Console.WriteLine($"Erro ao abrir chamado: {ex.Message}");
+                Console.ReadLine();
+                return null;
             }
         }
 

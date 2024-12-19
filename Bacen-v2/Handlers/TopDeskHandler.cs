@@ -36,7 +36,17 @@ namespace Bacen_v2.Handlers
             _auth = auth; // Instância do TopDeskAuth
         }
 
-        public async Task AbrirChamadoAsync(string tipoChamado, string assunto, string ticketServiceDesk, string descricao, string anexoPath = null)
+        public async Task AbrirChamadoAsync(
+    string tipoChamado,
+    string titulo,
+    string id,
+    string descricao,
+    string de,
+    string usuarioSolicitante,
+    string sla,
+    Dictionary<string, string> customColumns,
+    string anexoPath = null
+)
         {
             if (!_links.TryGetValue(tipoChamado, out string url))
             {
@@ -93,22 +103,50 @@ namespace Bacen_v2.Handlers
                 {
                     var tituloInput = frameLocator.Locator(tituloSelector);
                     await tituloInput.WaitForAsync(new LocatorWaitForOptions { Timeout = 60000 });
-                    await tituloInput.FillAsync(assunto);
+                    await tituloInput.FillAsync($"Chamado Service Desk Bacen OpenFinance #{id}");
                 }
 
                 if (fields.TryGetValue("ticket", out string ticketSelector))
                 {
                     var ticketInput = frameLocator.Locator(ticketSelector);
                     await ticketInput.WaitForAsync(new LocatorWaitForOptions { Timeout = 60000 });
-                    await ticketInput.FillAsync(ticketServiceDesk);
+                    await ticketInput.FillAsync($"#{id}");
                 }
 
-                    if (fields.TryGetValue("descricao", out string descricaoSelector))
+                if (fields.TryGetValue("descricao", out string descricaoSelector))
                 {
                     var descricaoInput = frameLocator.Locator(descricaoSelector);
                     await descricaoInput.WaitForAsync(new LocatorWaitForOptions { Timeout = 60000 });
-                    await descricaoInput.FillAsync(descricao);
+
+                    // Formatar customColumns como string
+                    var customColumnsFormatted = customColumns.Count > 0
+                        ? string.Join(Environment.NewLine, customColumns.Select(kv =>
+                            $"{kv.Key}: {(string.IsNullOrEmpty(kv.Value) ? "Não informado" : kv.Value)}"))
+                        : "Nenhum dado adicional.";
+
+                    // Preencher o campo de descrição
+                    await descricaoInput.FillAsync($@"
+De: {de}
+ 
+Usuário Solicitante: {usuarioSolicitante}
+ 
+Assunto: {titulo}
+ 
+Conteúdo: 
+Titulo:
+{titulo}
+
+Descrição:
+{descricao}
+
+CustomColumns:
+{customColumnsFormatted} (em desenvolvimento)
+ 
+Prazo de SLA: {sla}
+");
                 }
+
+
 
                 if (fields.TryGetValue("impacto", out string impactoSelector))
                 {
@@ -130,9 +168,12 @@ namespace Bacen_v2.Handlers
                 }
 
                 // Submeter o formulário
-                Logger.Log("Chamado não aberto, está em teste");
-                //Console.WriteLine("Enviando o chamado...");
-                //await frameLocator.Locator("input#button_submit").ClickAsync();
+                //Logger.Log("Chamado não aberto, está em teste");
+                Console.WriteLine("Enviando o chamado...");
+                await frameLocator.Locator("input#button_submit").ClickAsync();
+
+                // Sleep para aguardar o redirecionamento
+                await Task.Delay(15000);
 
                 // Verificar sucesso
                 var successMessage = await page.Locator("text=Obrigado!").IsVisibleAsync();

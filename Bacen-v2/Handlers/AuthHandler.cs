@@ -130,9 +130,6 @@ namespace Bacen_v2.Handlers
                     UserEmail = "E-mail não encontrado";
                 }
 
-
-                Logger.Log("Autenticação concluída com sucesso.");
-
             }
             catch (Exception ex)
             {

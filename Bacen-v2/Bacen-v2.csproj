@@ -17,6 +17,8 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" />
     <PackageReference Include="Microsoft.Playwright" Version="1.49.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Quartz" Version="3.13.1" />
+    <PackageReference Include="Quartz.Jobs" Version="3.13.1" />
     <PackageReference Include="Selenium.WebDriver" Version="4.27.0" />
     <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="131.0.6778.8700" />
   </ItemGroup>

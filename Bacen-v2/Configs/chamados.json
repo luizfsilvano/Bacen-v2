@@ -11,40 +11,58 @@
     "descricao": "textarea[id='ssdform1ccee153a56f4061831da7f8973c30bd_openquestion1_openquestion_openquestion']",
     "impacto": "input[id='ssdform1ccee153a56f4061831da7f8973c30bd_impact_impact_impact']"
   },
-  "SOLICITACAO DE INFORMACOES - API'S - OPEN BANKING BACEN": {
+  "SOLICITAÇÃO DE INFORMAÇÕES - API'S - OPEN BANKING BACEN": {
     "titulo": "input[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_description_description_description']",
     "ticket": "input[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_openquestion2_openquestion_openquestion']",
     "descricao": "textarea[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_openquestion1_openquestion_openquestion']",
     "impacto": "input[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_impact_impact_impact']"
   },
-  "SOLICITACAO DE INFORMACOES - Diretorio": {
+  "SOLICITAÇÃO DE INFORMAÇÕES - DIRETÓRIO": {
     "titulo": "input[id='ssdform876aec5531664b88b3ed6bf0d4026c81_description_description_description']",
     "ticket": "input[id='ssdform876aec5531664b88b3ed6bf0d4026c81_openquestion2_openquestion_openquestion']",
     "descricao": "textarea[id='ssdform876aec5531664b88b3ed6bf0d4026c81_openquestion1_openquestion_openquestion']",
     "impacto": "input[id='ssdform876aec5531664b88b3ed6bf0d4026c81_impact_impact_impact']"
   },
-  "SOLICITACAO DE INFORMACOES - Plataforma de Coleta de Metricas": {
+  "SOLICITAÇÃO DE INFORMAÇÕES - PLATAFORMA DE COLETA DE MÉTRICAS": {
     "titulo": "input[id='ssdform98256d359c2a4ae68232154ce5e0fcef_description_description_description']",
     "ticket": "input[id='ssdform98256d359c2a4ae68232154ce5e0fcef_openquestion2_openquestion_openquestion']",
     "descricao": "textarea[id='ssdform98256d359c2a4ae68232154ce5e0fcef_openquestion1_openquestion_openquestion']",
     "impacto": "input[id='ssdform98256d359c2a4ae68232154ce5e0fcef_impact_impact_impact']"
   },
-  "Incidentes - DCR/DCM (Perda de Credencial)": {
+  "INCIDENTES - DCR/DCM (PERDA DE CREDENCIAL)": {
     "titulo": "input[id='ssdform82bff296cc0349d5bb33f12f25515d5e_description_description_description']",
     "ticket": "input[id='ssdform82bff296cc0349d5bb33f12f25515d5e_openquestion2_openquestion_openquestion']",
     "descricao": "textarea[id='ssdform82bff296cc0349d5bb33f12f25515d5e_openquestion1_openquestion_openquestion']",
     "impacto": "input[id='ssdform82bff296cc0349d5bb33f12f25515d5e_impact_impact_impact']"
   },
-  "Incidentes - Erros em API's": {
+  "INCIDENTES - ERROS EM API'S": {
     "titulo": "input[id='ssdformbb24bfc615ce4f53958718c39c245bef_description_description_description']",
     "ticket": "input[id='ssdformbb24bfc615ce4f53958718c39c245bef_openquestion2_openquestion_openquestion']",
     "descricao": "textarea[id='ssdformbb24bfc615ce4f53958718c39c245bef_openquestion1_openquestion_openquestion']",
     "impacto": "input[id='ssdformbb24bfc615ce4f53958718c39c245bef_impact_impact_impact']"
   },
-  "Solicitacao de Melhorias": {
+  "INCIDENTES": {
+    "titulo": "input[id='ssdformbb24bfc615ce4f53958718c39c245bef_description_description_description']",
+    "ticket": "input[id='ssdformbb24bfc615ce4f53958718c39c245bef_openquestion2_openquestion_openquestion']",
+    "descricao": "textarea[id='ssdformbb24bfc615ce4f53958718c39c245bef_openquestion1_openquestion_openquestion']",
+    "impacto": "input[id='ssdformbb24bfc615ce4f53958718c39c245bef_impact_impact_impact']"
+  },
+  "SOLICITAÇÃO DE MELHORIA": {
     "titulo": "input[id='ssdform074a9c3062d24e2995d29e7cdf4dbdcc_description_description_description']",
     "ticket": "input[id='ssdform074a9c3062d24e2995d29e7cdf4dbdcc_openquestion2_openquestion_openquestion']",
     "descricao": "textarea[id='ssdform074a9c3062d24e2995d29e7cdf4dbdcc_openquestion1_openquestion_openquestion']",
     "impacto": "input[id='ssdform074a9c3062d24e2995d29e7cdf4dbdcc_impact_impact_impact']"
+  },
+  "MONITORAÇÃO E GESTÃO DE CONSEQUÊNCIA": {
+    "titulo": "input[id='ssdform45e61a218e0a44d5b4d79b90d9604b94_description_description_description']",
+    "ticket": "input[id='ssdform45e61a218e0a44d5b4d79b90d9604b94_openquestion2_openquestion_openquestion']",
+    "descricao": "textarea[id='ssdform45e61a218e0a44d5b4d79b90d9604b94_openquestion1_openquestion_openquestion']",
+    "impacto": "input[id='ssdform45e61a218e0a44d5b4d79b90d9604b94_impact_impact_impact']"
+  },
+  "SOLICITAÇÃO DE INFORMAÇÕES": {
+    "titulo": "input[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_description_description_description']",
+    "ticket": "input[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_openquestion2_openquestion_openquestion']",
+    "descricao": "textarea[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_openquestion1_openquestion_openquestion']",
+    "impacto": "input[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_impact_impact_impact']"
   }
 }

@@ -32,7 +32,10 @@ namespace Bacen_v2.Handlers
                     Headless = false // Mude para true se quiser ocultar o navegador
                 });
 
-                var context = await _browser.NewContextAsync();
+                var context = await _browser.NewContextAsync(new BrowserNewContextOptions
+                {
+                    Permissions = new[] { "clipboard-read", "clipboard-write" }
+                });
                 _authenticatedPage = await context.NewPageAsync();
 
                 // Navega até a página de login

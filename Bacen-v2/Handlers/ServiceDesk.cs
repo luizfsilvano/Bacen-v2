@@ -202,37 +202,59 @@ namespace Bacen_v2.Handlers
             }
         }
 
-        public async Task<string> BaixarAnexoComPlaywrightAsync(int chamadoId, string fileId, string fileName)
+        public async Task<string?> BaixarAnexoComSeleniumAsync(int chamadoId, string fileId, string fileName, string jsessionId, string gocSession, ChromeDriver driver)
         {
             try
             {
                 var url = $"{_baseUrl}/getFile?table=service_req&id={chamadoId}&getFile={fileId}";
-                var downloadDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Data", "processed");
-                Directory.CreateDirectory(downloadDirectory);
 
-                var playwright = await Playwright.CreateAsync();
-                var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
-                var context = await browser.NewContextAsync(new BrowserNewContextOptions
-                {
-                    AcceptDownloads = true
-                });
-                var page = await context.NewPageAsync();
+                // Navegar para a base URL para definir o domínio dos cookies
+                driver.Navigate().GoToUrl(_baseUrl);
+
+                // Adicionar cookies de autenticação
+                driver.Manage().Cookies.AddCookie(new OpenQA.Selenium.Cookie("JSESSIONID", jsessionId, "/", DateTime.Now.AddDays(1)));
+                driver.Manage().Cookies.AddCookie(new OpenQA.Selenium.Cookie("__goc_session__", gocSession, "/", DateTime.Now.AddDays(1)));
 
                 // Navegar para o URL do arquivo
-                await page.GotoAsync(url);
+                Console.WriteLine($"Navegando para o URL do anexo: {url}");
+                driver.Navigate().GoToUrl(url);
 
-                // Esperar pelo download do arquivo
-                var download = await page.WaitForDownloadAsync();
+                // Esperar por 15 segundos
+                Console.WriteLine("Esperando por 15 segundos...");
+                await Task.Delay(15000);
 
-                // Salvar o arquivo no diretório especificado
-                var filePath = Path.Combine(downloadDirectory, fileName);
-                await download.SaveAsAsync(filePath);
+                Console.WriteLine("Tempo de espera concluído.");
 
-                Console.WriteLine($"Anexo {fileName} baixado com sucesso em: {filePath}");
+                // Diretório de downloads
+                var downloadDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                var originalFilePath = Path.Combine(downloadDirectory, fileName);
 
-                await browser.CloseAsync();
 
-                return filePath;
+                // Verificar se o arquivo foi baixado
+                if (!File.Exists(originalFilePath))
+                {
+                    Console.WriteLine("O arquivo não foi baixado.");
+                    return null;
+                }
+
+                // Adicionar o chamadoId ao final do nome do arquivo
+                var fileNameWithId = $"{Path.GetFileNameWithoutExtension(fileName)} #{chamadoId}{Path.GetExtension(fileName)}";
+                var newFilePath = Path.Combine(downloadDirectory, fileNameWithId);
+
+                // Renomear o arquivo
+                File.Move(originalFilePath, newFilePath);
+
+                // Verificar o conteúdo do arquivo baixado
+                var fileContent = await File.ReadAllTextAsync(newFilePath);
+                if (fileContent.Contains("erro") || fileContent.Length < 100) // Ajuste a condição conforme necessário
+                {
+                    Console.WriteLine("O arquivo baixado parece estar corrompido ou não é o esperado.");
+                    return null;
+                }
+
+                Console.WriteLine($"Anexo {fileNameWithId} baixado com sucesso em: {newFilePath}");
+
+                return newFilePath;
             }
             catch (Exception ex)
             {
@@ -240,7 +262,6 @@ namespace Bacen_v2.Handlers
                 return null;
             }
         }
-
 
         // Método auxiliar para obter valores de cookies
         private string GetCookieValue(string cookieName)

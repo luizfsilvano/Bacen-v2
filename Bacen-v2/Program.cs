@@ -3,16 +3,51 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 using Bacen_v2.Handlers;
 using Bacen_v2.Handlers;
 using Bacen_v2.Utils;
 using Newtonsoft.Json.Linq;
 using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
 
 class Program
 {
     static async Task Main(string[] args)
     {
+        bool animacao = true;
+        var loadingTask = Task.Run(() =>
+        {
+            var loadingChars = new[] { '|', '/', '-', '\\' };
+            var index = 0;
+            while (animacao)
+            {
+                Console.Write($"\rInicializando contexto do Selenium... {loadingChars[index++ % loadingChars.Length]}");
+                Thread.Sleep(120);
+            }
+        });
+
+
+        // Configurar opções do Chrome do contexto do Selenium
+        var options = new ChromeOptions();
+        options.AddArgument("--disable-gpu");
+        options.AddArgument("--no-sandbox");
+        options.AddArgument("--disable-dev-shm-usage");
+        options.AddArgument("--headless");
+
+
+        // Inicializar o WebDriver do Chrome
+        using var driver = new ChromeDriver(options);
+
+        // Desativar animação
+        animacao = false;
+        await loadingTask;
+
+        Console.Clear();
+        Console.WriteLine("Contexto do Selenium inicializado com sucesso.");
+
+        Console.Clear();
+
         Console.WriteLine(@"
   ____                              ___  
  |  _ \                            |__ \ 
@@ -93,7 +128,7 @@ class Program
                         Console.WriteLine($"Chamado ID: {chamadoId} já foi processado. Pulando...");
                         continue;
                     }
-                                
+
 
                     Console.WriteLine($"Processando chamado ID: {chamadoId}, Título: {titulo}, Categoria: {categoria}");
 
@@ -110,7 +145,7 @@ class Program
                         if (!string.IsNullOrEmpty(fileId) && !string.IsNullOrEmpty(fileName))
                         {
                             Console.WriteLine($"Baixando anexo: {fileName}");
-                            var filePath = await serviceDeskHandler.BaixarAnexoComPlaywrightAsync(int.Parse(chamadoId), fileId, fileName);
+                            var filePath = await serviceDeskHandler.BaixarAnexoComSeleniumAsync(int.Parse(chamadoId), fileId, fileName, authHandler.SessionId, authHandler.GocSession, driver);
                             if (!string.IsNullOrEmpty(filePath))
                             {
                                 anexoPaths.Add(filePath);
@@ -127,12 +162,18 @@ class Program
                     {
                         // Adicionar número do protocolo às notas do chamado
                         await serviceDeskHandler.AdicionarNumeroProtocoloAsync(chamadoId, numeroProtocolo, authHandler.SessionId, authHandler.GocSession);
+
+                        // Atualizar informações no SD
+                        await serviceDeskHandler.AtualizarChamadoAsync(id, authHandler.SessionId, authHandler.GocSession);
+
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Falha ao abrir chamado no TopDesk. Pulando chamado ID: {chamadoId}");
+                        continue;
                     }
 
-                    // Atualizar informações no SD
-                    await serviceDeskHandler.AtualizarChamadoAsync(id, authHandler.SessionId, authHandler.GocSession);
-
-                    Console.WriteLine($"Chamado ID: {chamadoId} processado com sucesso.");
+                        Console.WriteLine($"Chamado ID: {chamadoId} processado com sucesso.");
                 }
                 catch (Exception ex)
                 {

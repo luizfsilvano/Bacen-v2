@@ -172,44 +172,50 @@ Prazo SLA: {sla}
                 }
 
                 // Submeter o formulário
-                //Logger.Log("Chamado não aberto, está em teste");
                 Console.WriteLine("Enviando o chamado...");
-                var navigationTask = page.WaitForNavigationAsync();
                 await frameLocator.Locator("input#button_submit").ClickAsync();
 
-                await navigationTask;
+                // Aguardar o redirecionamento
+                await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+                await Task.Delay(2000);
 
-                // Verificar se houve redirecionamento
-                var currentUrl = page.Url;
-                if (currentUrl != url)
+                // Simular Ctrl+A (selecionar tudo)
+                await page.Keyboard.PressAsync("Control+a");
+
+                // Simular Ctrl+C (copiar para a área de transferência)
+                await page.Keyboard.PressAsync("Control+c");
+
+                // Recuperar o conteúdo da área de transferência
+                var clipboardContent = await page.EvaluateAsync<string>("() => navigator.clipboard.readText()");
+
+                // Exibir o conteúdo capturado
+                Console.WriteLine("Conteúdo capturado:");
+                Console.WriteLine(clipboardContent);
+
+                // Salvar o conteúdo em um arquivo para análise
+                var logFilePath = Path.Combine(@"C:\Users\Luiz.Silvano\Downloads", "conteudo_visivel.txt");
+                await File.WriteAllTextAsync(logFilePath, clipboardContent);
+                Console.WriteLine($"Conteúdo visível salvo em: {logFilePath}");
+
+                // Buscar o número do protocolo usando regex
+                var match = System.Text.RegularExpressions.Regex.Match(clipboardContent, @"I\d{4}-\d{6}");
+                if (match.Success)
                 {
-                    Console.WriteLine($"Chamado aberto com sucesso. Redirecionado para: {currentUrl}");
-
-                    // Capturar o número do protocolo na página redirecionada
-                    var protocoloText = await page.Locator("text=Protocolo interno do Sicoob:").TextContentAsync();
-                    if (!string.IsNullOrEmpty(protocoloText))
-                    {
-                        var match = System.Text.RegularExpressions.Regex.Match(protocoloText, @"\bI\d{4}-\d{6}\b");
-                        if (match.Success)
-                        {
-                            var numeroProtocolo = match.Value;
-                            Console.WriteLine($"Número do protocolo capturado: {numeroProtocolo}");
-                            Console.ReadLine();
-                            return numeroProtocolo;
-                        }
-                    }
-
-                    Console.WriteLine("Número do protocolo não encontrado na página redirecionada.");
-                    Console.ReadLine();
-                    return null;
+                    var numeroProtocolo = match.Value;
+                    Console.WriteLine($"Número do protocolo capturado: {numeroProtocolo}");
+                    // Adiciona um Sleep para debug
+                    await Task.Delay(200000);
+                    return numeroProtocolo;
                 }
                 else
                 {
-                    Console.WriteLine("Falha ao abrir o chamado. Não houve redirecionamento.");
-                    Console.ReadLine();
+                    Console.WriteLine("Número do protocolo não encontrado no conteúdo capturado.");
+                    // Adiciona um Sleep para debug
+                    await Task.Delay(200000);
                     return null;
                 }
             }
+
             catch (Exception ex)
             {
                 Console.WriteLine($"Erro ao abrir chamado: {ex.Message}");

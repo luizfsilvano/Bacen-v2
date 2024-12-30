@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/Bacen-v2/Configs/appsettings.json
+/Bacen-v2/Configs/appsettings.json

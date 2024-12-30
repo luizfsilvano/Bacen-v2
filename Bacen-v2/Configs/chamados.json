@@ -64,5 +64,11 @@
     "ticket": "input[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_openquestion2_openquestion_openquestion']",
     "descricao": "textarea[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_openquestion1_openquestion_openquestion']",
     "impacto": "input[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_impact_impact_impact']"
+  },
+  "NOTIFICAÇÃO": {
+    "titulo": "input[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_description_description_description']",
+    "ticket": "input[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_openquestion2_openquestion_openquestion']",
+    "descricao": "textarea[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_openquestion1_openquestion_openquestion']",
+    "impacto": "input[id='ssdform9570354b5c2d47db8ae5f406e6f7d19d_impact_impact_impact']"
   }
 }

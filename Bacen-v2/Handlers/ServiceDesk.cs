@@ -323,7 +323,9 @@ namespace Bacen_v2.Handlers
                         new
                         {
                             userName = "Marco Aurélio da Silva Martins",
-                            text = $"Protocolo interno do Sicoob: {numeroProtocolo}"
+                            text = $@"Protocolo interno do Sicoob: {numeroProtocolo}
+
+Protocolo gerado automaticamente."
                         }
                     }
                 }

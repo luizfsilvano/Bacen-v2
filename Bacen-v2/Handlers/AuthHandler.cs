@@ -1,9 +1,6 @@
-﻿using System;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Bacen_v2.Utils;
 using Newtonsoft.Json;
-using Bacen_v2.Utils;
+using System.Text;
 
 namespace Bacen_v2.Handlers
 {
@@ -39,7 +36,6 @@ namespace Bacen_v2.Handlers
                 };
 
                 Logger.Log($"Tentando autenticar no Service Desk com a URL: {url}");
-                Logger.Log($"Payload: {JsonConvert.SerializeObject(payload)}");
 
                 var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
                 _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");

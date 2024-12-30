@@ -1,20 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Threading;
-using Bacen_v2.Handlers;
-using Bacen_v2.Handlers;
+﻿using Bacen_v2.Handlers;
 using Bacen_v2.Utils;
-using Newtonsoft.Json.Linq;
-using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 
 class Program
 {
+
+    private static ChromeDriver driver; // Campo global para o driver
+    private static System.Timers.Timer timer;      // Timer para executar a tarefa
+    private static bool isRunning = false; // Flag para verificar se a tarefa está em execução
+
+
     static async Task Main(string[] args)
     {
+        // Configurar nível de log para TensorFlow Lite
+        Environment.SetEnvironmentVariable("TF_CPP_MIN_LOG_LEVEL", "3");
+
         bool animacao = true;
         var loadingTask = Task.Run(() =>
         {
@@ -34,10 +34,12 @@ class Program
         options.AddArgument("--no-sandbox");
         options.AddArgument("--disable-dev-shm-usage");
         options.AddArgument("--headless");
+        options.AddArgument("log-level=3");
+
 
 
         // Inicializar o WebDriver do Chrome
-        using var driver = new ChromeDriver(options);
+        driver = new ChromeDriver(options);
 
         // Desativar animação
         animacao = false;
@@ -48,6 +50,39 @@ class Program
 
         Console.Clear();
 
+        // Configurar o Timer
+        timer = new System.Timers.Timer
+        {
+            Interval = 30 * 60 * 1000, // Intervalo em milissegundos (30 minutos)
+            AutoReset = true           // Repetir automaticamente
+        };
+
+        timer.Elapsed += async (sender, e) => await Automacao(); // Configurar evento
+        timer.Start(); // Iniciar o timer
+
+        // Executar a primeira vez imediatamente
+        Console.WriteLine("Executando automação pela primeira vez...");
+        Automacao().Wait();
+
+        // Manter o programa ativo
+        Console.WriteLine("Pressione Enter para sair...");
+        Console.ReadLine();
+
+        driver.Quit();
+        driver.Dispose();
+    }
+
+    private static async Task Automacao()
+    {
+        if (isRunning)
+        {
+            Console.WriteLine("Automação já está em execução. Pulando...");
+            return;
+        }
+
+        isRunning = true; // Sinaliza que a execução começou
+
+        Console.Clear();
         Console.WriteLine(@"
   ____                              ___  
  |  _ \                            |__ \ 
@@ -64,9 +99,7 @@ class Program
             var config = ConfigLoader.Load("Configs/appsettings.json");
             Console.WriteLine("Configurações carregadas com sucesso.");
 
-            // Inicializar logger
-            Logger.Init();
-            Logger.Log("Aplicação iniciada.");
+            Console.WriteLine($"Aplicação iniciada Dia {DateTime.Now}.");
 
             // Inicializar autenticação
             var authHandler = new AuthHandler(config);
@@ -83,11 +116,26 @@ class Program
             Console.WriteLine("Obtendo chamados com status 'Encaminhado N2 Atendimento'...");
             var chamados = await serviceDeskHandler.GetChamadosEncaminhadoN2Async();
 
+            // Verificar se existem chamados a serem processados
+            int totalNaoFinalizados = chamados.Count;
+            int totalPendentes = chamados.Count(chamado => chamado["status"]?.ToString() == "PENDENTE");
+
             if (chamados.Count == 0)
             {
                 Console.WriteLine("Nenhum chamado encontrado com o status 'Encaminhado N2 Atendimento'.");
+
+                // Logar os chamados não finalizados
+                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                LogHandler.LogChamados(timestamp, totalNaoFinalizados, totalPendentes, null);
+
+                Console.WriteLine("Processamento de chamados concluído.");
                 return;
             }
+
+            // Logar os chamados não finalizados
+            string detalhesChamados = string.Join(Environment.NewLine, chamados.Select(chamado =>
+               $"ID: {chamado["id"]}, Título: {chamado["titulo"]}, Status: {chamado["status"]}")
+           );
 
             foreach (var chamado in chamados)
             {
@@ -109,7 +157,7 @@ class Program
                         continue;
                     }
 
-
+                    // Obter informações do chamado
                     var id = detalhesChamado["id"]?.ToString();
                     var titulo = detalhesChamado["titulo"]?.ToString();
                     var descricao = detalhesChamado["descricao"]?.ToString();
@@ -126,9 +174,9 @@ class Program
                     {
                         // pular para o proximo chamado
                         Console.WriteLine($"Chamado ID: {chamadoId} já foi processado. Pulando...");
+                        Console.WriteLine($"ATUALIZAÇÃO NO CHAMADO {chamadoId}!");
                         continue;
                     }
-
 
                     Console.WriteLine($"Processando chamado ID: {chamadoId}, Título: {titulo}, Categoria: {categoria}");
 
@@ -141,6 +189,7 @@ class Program
                     {
                         var fileId = anexo["fileId"]?.ToString();
                         var fileName = anexo["fileName"]?.ToString();
+
 
                         if (!string.IsNullOrEmpty(fileId) && !string.IsNullOrEmpty(fileName))
                         {
@@ -173,20 +222,30 @@ class Program
                         continue;
                     }
 
-                        Console.WriteLine($"Chamado ID: {chamadoId} processado com sucesso.");
+                    Console.WriteLine($"Chamado ID: {chamadoId} processado com sucesso.");
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Erro ao processar chamado: {ex.Message}");
                 }
             }
+            // Logar os chamados processados
+            string timestampFinal = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            LogHandler.LogChamados(timestampFinal, totalNaoFinalizados, totalPendentes, detalhesChamados);
 
             Console.WriteLine("Processamento de chamados concluído.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro inesperado: {ex.Message}");
-            Logger.Log($"Erro crítico: {ex.Message}");
+            string errorMessage = $"Erro ao processar chamado: {ex.Message}";
+            Console.WriteLine(errorMessage);
+            LogHandler.LogChamados(DateTime.Now.ToString("yyyyMMdd_HHmmss"), 0, 0, errorMessage);
+        }
+        finally
+        {
+            isRunning = false; // Sinaliza que a execução terminou
         }
     }
 }
+
+

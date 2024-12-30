@@ -10,6 +10,7 @@
     "INCIDENTES": "https://atendimento.sisbr.coop.br/tas/public/ssp/content/serviceflow?unid=918765288d374684a145410808ea0877&from=66a82165-f5f1-40ca-b4c7-43e1e35dacfc&openedFromService=true",
     "SOLICITAÇÃO DE MELHORIA": "https://atendimento.sisbr.coop.br/tas/public/ssp/content/serviceflow?unid=f506c39435234eb3b612858a01b03d64&from=2102809c-e7a3-4e5f-b564-6eda4d9e4a3d&openedFromService=true",
     "MONITORAÇÃO E GESTÃO DE CONSEQUÊNCIA": "https://atendimento.sisbr.coop.br/tas/public/ssp/content/serviceflow?unid=e577740c39314a49ae23751b688f8ad1&from=5d957d3f-d712-41c2-8134-209308b43b43&openedFromService=true",
-    "SOLICITAÇÃO DE INFORMAÇÕES": "https://atendimento.sisbr.coop.br/tas/public/ssp/content/serviceflow?unid=8c963e54f2574953ac3db54486ebe321&from=4d7ed097-4acf-483f-b8cc-dfb08e796dd7&openedFromService=true"
+    "SOLICITAÇÃO DE INFORMAÇÕES": "https://atendimento.sisbr.coop.br/tas/public/ssp/content/serviceflow?unid=8c963e54f2574953ac3db54486ebe321&from=4d7ed097-4acf-483f-b8cc-dfb08e796dd7&openedFromService=true",
+    "NOTIFICAÇÃO": "https://atendimento.sisbr.coop.br/tas/public/ssp/content/serviceflow?unid=8c963e54f2574953ac3db54486ebe321&from=4d7ed097-4acf-483f-b8cc-dfb08e796dd7&openedFromService=true"
   }
 }

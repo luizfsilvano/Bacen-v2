@@ -1,6 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using Microsoft.Playwright;
+﻿using Microsoft.Playwright;
 
 namespace Bacen_v2.Handlers
 {
@@ -29,7 +27,7 @@ namespace Bacen_v2.Handlers
                 var playwright = await Playwright.CreateAsync();
                 _browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
                 {
-                    Headless = false // Mude para true se quiser ocultar o navegador
+                    Headless = true // Mude para true se quiser ocultar o navegador
                 });
 
                 var context = await _browser.NewContextAsync(new BrowserNewContextOptions

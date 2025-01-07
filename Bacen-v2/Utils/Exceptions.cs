@@ -1,4 +1,5 @@
 ﻿using System;
+<<<<<<< HEAD
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -64,5 +65,16 @@ namespace Bacen_v2.Utils
                 }
             }
         }
+=======
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Bacen_v2.Utils
+{
+    internal class Exceptions
+    {
+>>>>>>> 3fbeb624470ac3ee18653e9599f94568de52fbfa
     }
 }

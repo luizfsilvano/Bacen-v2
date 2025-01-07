@@ -204,7 +204,7 @@ class Program
 
 
                     // Abrir chamado no TopDesk
-                    var numeroProtocolo = await topDeskHandler.AbrirChamadoAsync(categoria, titulo, id, descricao, de, usuarioSolicitante, sla, customColumns, notas, anexoPaths.Count > 0 ? anexoPaths[0] : null);
+                    var numeroProtocolo = await topDeskHandler.AbrirChamadoAsync(categoria, titulo, id, descricao, de, usuarioSolicitante, sla, customColumns, notas, anexoPaths);
 
                     // Verificar se o chamado possui um número de protocolo gerado com sucesso
                     if (!string.IsNullOrEmpty(numeroProtocolo))
@@ -231,7 +231,7 @@ class Program
             }
             // Logar os chamados processados
             string timestampFinal = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            LogHandler.LogChamados(timestampFinal, totalNaoFinalizados, totalPendentes, detalhesChamados);
+            LogHandler.LogChamados(timestampFinal, totalPendentes, detalhesChamados);
 
             Console.WriteLine("Processamento de chamados concluído.");
         }

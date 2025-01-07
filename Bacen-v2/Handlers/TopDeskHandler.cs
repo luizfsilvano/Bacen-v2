@@ -42,7 +42,7 @@ namespace Bacen_v2.Handlers
             string sla,
             string customColumns,
             string notes,
-            string anexoPath = null,
+            List<string> anexoPaths = null,
             int maxRetries = 3
         )
         {
@@ -170,15 +170,32 @@ namespace Bacen_v2.Handlers
                         await page.Keyboard.PressAsync("Enter");
                     }
 
-                    // Anexar arquivo, se fornecido
-                    if (!string.IsNullOrEmpty(anexoPath) && File.Exists(anexoPath))
+                    // Anexar múltiplos arquivos, se fornecidos
+                    if (anexoPaths != null && anexoPaths.Any())
                     {
-                        Console.WriteLine("Anexando o arquivo...");
-                        await frameLocator.Locator("input[type=file]").SetInputFilesAsync(anexoPath);
+                        foreach (var anexo in anexoPaths)
+                        {
+                            try
+                            {
+                                Console.WriteLine($"Tentando anexar: {Path.GetFileName(anexo)}");
+                                await frameLocator.Locator("input[type=file]").SetInputFilesAsync(new[] { anexo });
+                                Console.WriteLine($"Arquivo anexado: {Path.GetFileName(anexo)}");
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Erro ao anexar {Path.GetFileName(anexo)}: {ex.Message}");
+                            }
+                        }
+                    
+                        if (falhas.Any())
+                            {
+                                Console.WriteLine("Arquivos que não puderam ser anexados:");
+                                falhas.ForEach(f => Console.WriteLine(f));
+                            }
                     }
                     else
                     {
-                        Console.WriteLine("Nenhum anexo fornecido ou arquivo não encontrado.");
+                        Console.WriteLine("Nenhum anexo fornecido.");
                     }
 
 

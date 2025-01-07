@@ -23,14 +23,13 @@ namespace Bacen_v2.Utils
                     // Escrever cabeçalho do log
                     sw.WriteLine($"Iniciando recuperação de Tickets Bacen para Topdesk ({DateTime.Now:dd/MM/yyyy HH:mm:ss})");
                     sw.WriteLine(" --------------------------------------------------");
-                    sw.WriteLine($"Total de chamados nao finalizados: {totalNaoFinalizados}");
-                    sw.WriteLine($"Total de chamados pendentes de abertura: {totalPendentes}");
+                    sw.WriteLine($"Total de chamados processados na abertura: {totalPendentes}");
                     sw.WriteLine("---------------------------------------------------");
 
                     // Adicionar detalhes dos chamados, se houver
                     if (!string.IsNullOrWhiteSpace(detalhesChamados))
                     {
-                        sw.WriteLine(detalhesChamados);
+                        sw.WriteLine(detalhesChamados.ToString());
                     }
 
                     // Finalizar log

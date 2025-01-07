@@ -174,6 +174,8 @@ namespace Bacen_v2.Handlers
                     // Anexar múltiplos arquivos, se fornecidos
                     if (anexoPaths != null && anexoPaths.Any())
                     {
+                        var falhas = new List<string>(); // Declaração da variável "falhas"
+
                         foreach (var anexo in anexoPaths)
                         {
                             try

@@ -227,6 +227,7 @@ class Program
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Erro ao processar chamado: {ex.Message}");
+                    await Exceptions.HandleErrorAsync(ex);
                 }
             }
             // Logar os chamados processados
@@ -240,6 +241,7 @@ class Program
             string errorMessage = $"Erro ao processar chamado: {ex.Message}";
             Console.WriteLine(errorMessage);
             LogHandler.LogChamados(DateTime.Now.ToString("yyyyMMdd_HHmmss"), 0, 0, errorMessage);
+            await Exceptions.HandleErrorAsync(ex);
         }
         finally
         {

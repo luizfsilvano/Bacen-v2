@@ -232,7 +232,7 @@ class Program
             }
             // Logar os chamados processados
             string timestampFinal = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            LogHandler.LogChamados(timestampFinal, totalPendentes, detalhesChamados);
+            LogHandler.LogChamados(timestampFinal, totalNaoFinalizados, totalPendentes, detalhesChamados);
 
             Console.WriteLine("Processamento de chamados concluído.");
         }

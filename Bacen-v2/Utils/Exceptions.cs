@@ -1,5 +1,4 @@
 ﻿using System;
-<<<<<<< HEAD
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -59,22 +58,11 @@ namespace Bacen_v2.Utils
 
                 var response = await _httpClient.PostAsync(apiUrl, content);
                 if (!response.IsSuccessStatusCode)
-                {
+    {
                     var errorDetails = await response.Content.ReadAsStringAsync();
                     throw new Exception($"Falha ao enviar e-mail. Detalhes: {errorDetails}");
                 }
             }
         }
-=======
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Bacen_v2.Utils
-{
-    internal class Exceptions
-    {
->>>>>>> 3fbeb624470ac3ee18653e9599f94568de52fbfa
     }
 }

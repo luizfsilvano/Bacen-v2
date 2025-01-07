@@ -158,7 +158,8 @@ namespace Bacen_v2.Handlers
     --------------------------------
 
     Prazo SLA: {sla}
-    ");
+    
+    Protocolo gerado automaticamente.");
                     }
 
 
@@ -206,7 +207,7 @@ namespace Bacen_v2.Handlers
 
                     // Aguardar o redirecionamento
                     await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-                    await Task.Delay(2000);
+                    await Task.Delay(5000);
 
                     // Simular Ctrl+A
                     await page.Keyboard.PressAsync("Control+a");

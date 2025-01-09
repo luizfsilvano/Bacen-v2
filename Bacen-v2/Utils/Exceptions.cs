@@ -1,8 +1,9 @@
 ﻿using Newtonsoft.Json.Linq;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
-namespace Bacen_v2.Utils
+namespace Bacen_v2.Utils {
     internal static class Exceptions
     {
         private static readonly HttpClient _httpClient = new HttpClient();
@@ -61,6 +62,5 @@ namespace Bacen_v2.Utils
                 }
             }
         }
-    {
     }
 }

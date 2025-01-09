@@ -1,11 +1,13 @@
 ﻿using Bacen_v2.Handlers;
 using Bacen_v2.Utils;
+using Microsoft.Playwright;
 using OpenQA.Selenium.Chrome;
 
 class Program
 {
 
     private static ChromeDriver driver; // Campo global para o driver
+    private static IBrowser playwrightBrowser; // Campo global para o navegador Playwright
     private static System.Timers.Timer timer;      // Timer para executar a tarefa
     private static bool isRunning = false; // Flag para verificar se a tarefa está em execução
 
@@ -22,31 +24,43 @@ class Program
             var index = 0;
             while (animacao)
             {
-                Console.Write($"\rInicializando contexto do Selenium... {loadingChars[index++ % loadingChars.Length]}");
+                Console.Write($"\rInicializando contextos... {loadingChars[index++ % loadingChars.Length]}");
                 Thread.Sleep(120);
             }
         });
 
 
         // Configurar opções do Chrome do contexto do Selenium
-        var options = new ChromeOptions();
-        options.AddArgument("--disable-gpu");
-        options.AddArgument("--no-sandbox");
-        options.AddArgument("--disable-dev-shm-usage");
-        options.AddArgument("--headless");
-        options.AddArgument("log-level=3");
+        var seleniumTask = Task.Run(() =>
+        {
+            var options = new ChromeOptions();
+            options.AddArgument("--disable-gpu");
+            options.AddArgument("--no-sandbox");
+            options.AddArgument("--disable-dev-shm-usage");
+            options.AddArgument("--headless");
+            options.AddArgument("log-level=3");
+            driver = new ChromeDriver(options);
+        });
 
+        // Inicializar contexto do Playwright
+        var playwrightTask = Task.Run(async () =>
+        {
+            var playwright = await Playwright.CreateAsync();
+            playwrightBrowser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+            {
+                Headless = false  // Mude para true ou false para visualizar o navegador.
+            });
+        });
 
-
-        // Inicializar o WebDriver do Chrome
-        driver = new ChromeDriver(options);
+        // Aguarde a inicialização de ambos os contextos
+        await Task.WhenAll(seleniumTask, playwrightTask);
 
         // Desativar animação
         animacao = false;
         await loadingTask;
 
         Console.Clear();
-        Console.WriteLine("Contexto do Selenium inicializado com sucesso.");
+        Console.WriteLine("Contexto do Selenium e Playwright inicializado com sucesso.");
 
         Console.Clear();
 
@@ -70,6 +84,10 @@ class Program
 
         driver.Quit();
         driver.Dispose();
+        if (playwrightBrowser != null)
+        {
+            await playwrightBrowser.CloseAsync();
+        }
     }
 
     private static async Task Automacao()
@@ -108,9 +126,10 @@ class Program
 
             // Inicializar manipuladores
             var serviceDeskHandler = new ServiceDesk(config, authHandler.SessionId, authHandler.GocSession);
-            var topDeskAuth = new TopDeskAuth(config);
+            var topDeskAuth = new TopDeskAuth(config, playwrightBrowser);
             await topDeskAuth.LoginAsync();
             var topDeskHandler = new TopDeskHandler("Configs/topdesk_links.json", "Configs/chamados.json", topDeskAuth);
+            var searchHandler = new SearchHandler(topDeskAuth, config);
 
             // Obter chamados com status "Encaminhado N2 Atendimento"
             Console.WriteLine("Obtendo chamados com status 'Encaminhado N2 Atendimento'...");
@@ -141,6 +160,7 @@ class Program
             {
                 try
                 {
+
                     var chamadoId = chamado["id"]?.ToString();
 
                     if (string.IsNullOrEmpty(chamadoId))
@@ -169,6 +189,9 @@ class Program
                     var sla = detalhesChamado["sla"]?.ToString();
                     var notas = detalhesChamado["notas"]?.ToString();
                     var customColumns = detalhesChamado["customColumns"]?.ToString();
+
+                    // Gerar identificador único do chamado gerado automaticamente:
+                    string identificador = searchHandler.GerarIdentificador(int.Parse(chamadoId));
 
                     if (serviceDeskHandler.VerificarChamadoAberto(notas) == true)
                     {
@@ -204,7 +227,7 @@ class Program
 
 
                     // Abrir chamado no TopDesk
-                    var numeroProtocolo = await topDeskHandler.AbrirChamadoAsync(categoria, titulo, id, descricao, de, usuarioSolicitante, sla, customColumns, notas, anexoPaths);
+                    var numeroProtocolo = await topDeskHandler.AbrirChamadoAsync(categoria, titulo, id, descricao, de, usuarioSolicitante, sla, customColumns, notas, identificador, anexoPaths);
 
                     // Verificar se o chamado possui um número de protocolo gerado com sucesso
                     if (!string.IsNullOrEmpty(numeroProtocolo))
@@ -218,8 +241,22 @@ class Program
                     }
                     else
                     {
-                        Console.WriteLine($"Falha ao abrir chamado no TopDesk. Pulando chamado ID: {chamadoId}");
-                        continue;
+                        Console.WriteLine($"Falha ao identificar número do protocolo. Executando busca pelo identificador único do chamado: {identificador}");
+
+                        // Executa a busca por identificador único
+                        var protocoloEncontrado = await searchHandler.PesquisarChamadoAsync(identificador);
+
+                        if (protocoloEncontrado == null)
+                        {
+                            Console.WriteLine($"Número do protocolo não encontrado para o chamado ID: {chamadoId}. Colocando nas notas o identificador único no ServiceDesk e Pulando...");
+                            await serviceDeskHandler.AdicionarNumeroProtocoloAsync(chamadoId, identificador, authHandler.SessionId, authHandler.GocSession);
+                            continue;
+                        }
+                        else
+                        {
+                            Console.WriteLine("Número do protocolo encontrado com sucesso.");
+                            await serviceDeskHandler.AdicionarNumeroProtocoloAsync(chamadoId, protocoloEncontrado, authHandler.SessionId, authHandler.GocSession);
+                        }
                     }
 
                     Console.WriteLine($"Chamado ID: {chamadoId} processado com sucesso.");

@@ -6,13 +6,14 @@ namespace Bacen_v2.Handlers
     {
         private readonly dynamic _config;
         private readonly string _baseUrl;
-        private IBrowser _browser;
+        private readonly IBrowser _browser;
         private IPage _authenticatedPage;
 
-        public TopDeskAuth(dynamic config)
+        public TopDeskAuth(dynamic config, IBrowser browser)
         {
             _config = config;
             _baseUrl = _config.TopDesk.BaseUrl;
+            _browser = browser;
         }
 
         public async Task LoginAsync()
@@ -23,17 +24,11 @@ namespace Bacen_v2.Handlers
                 var _username = (string)_config.TopDesk.Username;
                 var _password = (string)_config.TopDesk.Password;
 
-                // Inicializa o Playwright
-                var playwright = await Playwright.CreateAsync();
-                _browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
-                {
-                    Headless = true // Mude para true se quiser ocultar o navegador
-                });
-
                 var context = await _browser.NewContextAsync(new BrowserNewContextOptions
                 {
                     Permissions = new[] { "clipboard-read", "clipboard-write" }
                 });
+
                 _authenticatedPage = await context.NewPageAsync();
 
                 // Navega até a página de login
@@ -80,8 +75,7 @@ namespace Bacen_v2.Handlers
         {
             if (_browser != null)
             {
-                await _browser.CloseAsync();
-                _browser = null;
+                await _authenticatedPage.Context.CloseAsync();
                 _authenticatedPage = null;
                 Console.WriteLine("Sessão encerrada com sucesso.");
             }

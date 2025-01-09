@@ -42,6 +42,7 @@ namespace Bacen_v2.Handlers
             string sla,
             string customColumns,
             string notes,
+            string identificador,
             List<string> anexoPaths = null,
             int maxRetries = 3
         )
@@ -115,7 +116,7 @@ namespace Bacen_v2.Handlers
                     {
                         var tituloInput = frameLocator.Locator(tituloSelector);
                         await tituloInput.WaitForAsync(new LocatorWaitForOptions { Timeout = 60000 });
-                        await tituloInput.FillAsync($"Chamado Service Desk Bacen OpenFinance #{id}");
+                        await tituloInput.FillAsync($"Chamado Service Desk Bacen OpenFinance #{id} ({identificador})");
                     }
 
                     if (fields.TryGetValue("ticket", out string ticketSelector))
@@ -183,18 +184,19 @@ namespace Bacen_v2.Handlers
                                 Console.WriteLine($"Tentando anexar: {Path.GetFileName(anexo)}");
                                 await frameLocator.Locator("input[type=file]").SetInputFilesAsync(new[] { anexo });
                                 Console.WriteLine($"Arquivo anexado: {Path.GetFileName(anexo)}");
+
                             }
                             catch (Exception ex)
                             {
                                 Console.WriteLine($"Erro ao anexar {Path.GetFileName(anexo)}: {ex.Message}");
                             }
                         }
-                    
+
                         if (falhas.Any())
-                            {
-                                Console.WriteLine("Arquivos que não puderam ser anexados:");
-                                falhas.ForEach(f => Console.WriteLine(f));
-                            }
+                        {
+                            Console.WriteLine("Arquivos que não puderam ser anexados:");
+                            falhas.ForEach(f => Console.WriteLine(f));
+                        }
                     }
                     else
                     {
@@ -241,6 +243,18 @@ namespace Bacen_v2.Handlers
                         if (clipboardContent.Contains("Impacto: deve ser preenchido"))
                         {
                             Console.WriteLine("Erro: Impacto não preenchido corretamente. Fazendo retry");
+
+                            if (attempt < maxRetries)
+                            {
+                                Console.WriteLine("Tentando novamente...");
+                                continue;
+                            }
+                        }
+
+                        // Verifica se o erro é de anexar o documento ao chamado
+                        if (clipboardContent.Contains("An error occurred while trying to attach the file"))
+                        {
+                            Console.WriteLine("Erro: Um erro ocorreu ao tentar anexar o arquivo no chamado");
 
                             if (attempt < maxRetries)
                             {

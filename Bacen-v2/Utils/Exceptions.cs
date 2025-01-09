@@ -1,8 +1,5 @@
-﻿using System;
-using System.Net.Http;
+﻿using Newtonsoft.Json.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 
 namespace Bacen_v2.Utils
 {
@@ -58,7 +55,7 @@ namespace Bacen_v2.Utils
 
                 var response = await _httpClient.PostAsync(apiUrl, content);
                 if (!response.IsSuccessStatusCode)
-    {
+                {
                     var errorDetails = await response.Content.ReadAsStringAsync();
                     throw new Exception($"Falha ao enviar e-mail. Detalhes: {errorDetails}");
                 }

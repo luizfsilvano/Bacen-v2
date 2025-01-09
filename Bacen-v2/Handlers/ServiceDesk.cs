@@ -1,20 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.IO;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Globalization;
-using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
-using System.Net;
-using Microsoft.Playwright;
-using Bacen_v2.Utils;
-using System.Text.RegularExpressions;
-using Newtonsoft.Json;
-using static OpenQA.Selenium.PrintOptions;
+using System.Globalization;
+using System.Text;
 
 namespace Bacen_v2.Handlers
 {
@@ -73,7 +61,7 @@ namespace Bacen_v2.Handlers
 
                 return chamadosFiltrados;
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
                 Console.WriteLine($"Erro ao processar chamados: {ex.Message}");
                 return new List<JObject>();
@@ -159,7 +147,7 @@ namespace Bacen_v2.Handlers
 
                 return detalhesUteis;
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
                 Console.WriteLine($"Erro ao processar detalhes do chamado {chamadoId}: {ex.Message}");
                 return null;
@@ -195,7 +183,7 @@ namespace Bacen_v2.Handlers
 
                 return anexos?.Cast<JObject>().ToList() ?? new List<JObject>();
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
                 Console.WriteLine($"Erro ao buscar anexos do chamado {chamadoId}: {ex.Message}");
                 return new List<JObject>();
@@ -244,19 +232,11 @@ namespace Bacen_v2.Handlers
                 // Renomear o arquivo
                 File.Move(originalFilePath, newFilePath);
 
-                // Verificar o conteúdo do arquivo baixado
-                var fileContent = await File.ReadAllTextAsync(newFilePath);
-                if (fileContent.Contains("erro") || fileContent.Length < 100) // Ajuste a condição conforme necessário
-                {
-                    Console.WriteLine("O arquivo baixado parece estar corrompido ou não é o esperado.");
-                    return null;
-                }
-
                 Console.WriteLine($"Anexo {fileNameWithId} baixado com sucesso em: {newFilePath}");
 
                 return newFilePath;
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
                 Console.WriteLine($"Erro ao baixar o anexo {fileName}: {ex.Message}");
                 return null;
@@ -291,6 +271,11 @@ namespace Bacen_v2.Handlers
                 Console.WriteLine("Chamado já processado!");
                 return true;
             }
+            if (notas.Contains("Identificador único do chamado:", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("Chamado já processado! Número do protocolo não encontrado no topdesk.");
+                return true;
+            }
             return false;
         }
 
@@ -299,11 +284,28 @@ namespace Bacen_v2.Handlers
         {
             try
             {
+                // Mensagem da nota
+                string mensagemNota = string.Empty;
+
                 // Verificar se o número do protocolo foi capturado
                 if (string.IsNullOrEmpty(numeroProtocolo))
                 {
                     Console.WriteLine($"Número do protocolo não encontrado para o chamado {idServiceDesk}. Nenhuma nota será adicionada.");
                     return;
+                }
+
+                // Verifica se é um número de protocolo, ou um identificador único com regex
+                var regexIdentificador = new System.Text.RegularExpressions.Regex(@"A\d{4}-\d{6}");
+                var match = regexIdentificador.Match(numeroProtocolo);
+                if (match.Success)
+                {
+                    Console.WriteLine("Identificador único encontrado. Mudando mensagem da nota.");
+                    mensagemNota = "Número do protocolo não encontrado. Identificador único do chamado:";
+                }
+                else
+                {
+                    Console.WriteLine("Número de protocolo encontrado. Mensagem padrão.");
+                    mensagemNota = "Protocolo interno do Sicoob:";
                 }
 
                 // URL do chamado
@@ -323,7 +325,7 @@ namespace Bacen_v2.Handlers
                         new
                         {
                             userName = "Marco Aurélio da Silva Martins",
-                            text = $@"Protocolo interno do Sicoob: {numeroProtocolo}
+                            text = $@"{mensagemNota} {numeroProtocolo}
 
 Protocolo gerado automaticamente."
                         }
@@ -355,7 +357,7 @@ Protocolo gerado automaticamente."
                     Console.WriteLine($"Número do protocolo {numeroProtocolo} adicionado com sucesso ao chamado {idServiceDesk}.");
                 }
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
                 Console.WriteLine($"Erro ao adicionar número do protocolo: {ex.Message}");
             }
@@ -416,7 +418,7 @@ Protocolo gerado automaticamente."
                     Console.WriteLine($"Chamado {idServiceDesk} atualizado com sucesso.");
                 }
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
                 Console.WriteLine($"Erro ao atualizar chamado {idServiceDesk}: {ex.Message}");
             }

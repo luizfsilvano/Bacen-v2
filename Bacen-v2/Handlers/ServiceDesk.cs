@@ -276,6 +276,11 @@ namespace Bacen_v2.Handlers
                 Console.WriteLine("Chamado já processado! Número do protocolo não encontrado no topdesk.");
                 return true;
             }
+            if (notas.Contains("Identificador único do chamado:", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("Chamado já processado! Número do protocolo não encontrado no topdesk.");
+                return true;
+            }
             return false;
         }
 

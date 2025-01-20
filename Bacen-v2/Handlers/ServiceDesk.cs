@@ -266,9 +266,9 @@ namespace Bacen_v2.Handlers
         // Método para poder verificar se o chamado já está aberto no topdesk por meio das notas ("Protocolo Interno do Sicoob:")
         public bool VerificarChamadoAberto(string notas)
         {
-            if (notas.Contains("Protocolo Interno do Sicoob:", StringComparison.OrdinalIgnoreCase))
+            if (notas.Contains("Protocolo Interno do Sicoob:", StringComparison.OrdinalIgnoreCase) || notas.Contains("Protocolo Interno no Sicoob:", StringComparison.OrdinalIgnoreCase))
             {
-                Console.WriteLine("Chamado já processado!");
+                Console.WriteLine("Chamado já processado! Número do protocolo encontrado no topdesk.");
                 return true;
             }
             if (notas.Contains("Identificador único do chamado:", StringComparison.OrdinalIgnoreCase))

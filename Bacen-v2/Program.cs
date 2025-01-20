@@ -1,4 +1,5 @@
-﻿using Bacen_v2.Handlers;
+﻿using Bacen_v2.API;
+using Bacen_v2.Handlers;
 using Bacen_v2.Utils;
 using Microsoft.Playwright;
 using OpenQA.Selenium.Chrome;
@@ -10,10 +11,13 @@ class Program
     private static IBrowser playwrightBrowser; // Campo global para o navegador Playwright
     private static System.Timers.Timer timer;      // Timer para executar a tarefa
     private static bool isRunning = false; // Flag para verificar se a tarefa está em execução
+    private static string contextoExecucao = "Processamento de chamados"; // Contexto de execução
 
 
     static async Task Main(string[] args)
     {
+        _ = WebSocketServer.StartServer(); // Iniciar o WebSocket Server em segundo plano
+
         // Configurar nível de log para TensorFlow Lite
         Environment.SetEnvironmentVariable("TF_CPP_MIN_LOG_LEVEL", "3");
 
@@ -48,7 +52,7 @@ class Program
             var playwright = await Playwright.CreateAsync();
             playwrightBrowser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
             {
-                Headless = false  // Mude para true ou false para visualizar o navegador.
+                Headless = true  // Mude para true ou false para visualizar o navegador.
             });
         });
 
@@ -145,7 +149,7 @@ class Program
 
                 // Logar os chamados não finalizados
                 string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                LogHandler.LogChamados(timestamp, totalNaoFinalizados, totalPendentes, null);
+                LogHandler.LogChamados(timestamp, totalNaoFinalizados, totalPendentes, null, false);
 
                 Console.WriteLine("Processamento de chamados concluído.");
                 return;
@@ -156,11 +160,12 @@ class Program
                $"ID: {chamado["id"]}, Título: {chamado["titulo"]}, Status: {chamado["status"]}")
            );
 
+            int totalNaoAbertos = 0;
+
             foreach (var chamado in chamados)
             {
                 try
                 {
-
                     var chamadoId = chamado["id"]?.ToString();
 
                     if (string.IsNullOrEmpty(chamadoId))
@@ -189,6 +194,8 @@ class Program
                     var sla = detalhesChamado["sla"]?.ToString();
                     var notas = detalhesChamado["notas"]?.ToString();
                     var customColumns = detalhesChamado["customColumns"]?.ToString();
+                    var statusProcessamento = "Sucesso";
+
 
                     // Gerar identificador único do chamado gerado automaticamente:
                     string identificador = searchHandler.GerarIdentificador(int.Parse(chamadoId));
@@ -196,8 +203,9 @@ class Program
                     if (serviceDeskHandler.VerificarChamadoAberto(notas) == true)
                     {
                         // pular para o proximo chamado
-                        Console.WriteLine($"Chamado ID: {chamadoId} já foi processado. Pulando...");
-                        Console.WriteLine($"ATUALIZAÇÃO NO CHAMADO {chamadoId}!");
+                        Console.ForegroundColor = ConsoleColor.Blue;
+                        Console.WriteLine($"\nℹ️ ATUALIZAÇÃO NO CHAMADO {chamadoId}!\n");
+                        Console.ResetColor();
                         continue;
                     }
 
@@ -227,7 +235,7 @@ class Program
 
 
                     // Abrir chamado no TopDesk
-                    var numeroProtocolo = await topDeskHandler.AbrirChamadoAsync(categoria, titulo, id, descricao, de, usuarioSolicitante, sla, customColumns, notas, identificador, anexoPaths);
+                    var numeroProtocolo = await topDeskHandler.AbrirChamadoAsync(categoria, titulo, id, descricao, de, usuarioSolicitante, sla, customColumns, notas, identificador, searchHandler, anexoPaths);
 
                     // Verificar se o chamado possui um número de protocolo gerado com sucesso
                     if (!string.IsNullOrEmpty(numeroProtocolo))
@@ -244,7 +252,7 @@ class Program
                         Console.WriteLine($"Falha ao identificar número do protocolo. Executando busca pelo identificador único do chamado: {identificador}");
 
                         // Executa a busca por identificador único
-                        var protocoloEncontrado = await searchHandler.PesquisarChamadoAsync(identificador);
+                        var protocoloEncontrado = await searchHandler.PesquisarChamadoAsync(identificador, id);
 
                         if (protocoloEncontrado == null)
                         {
@@ -259,26 +267,51 @@ class Program
                         }
                     }
 
+                    detalhesChamados += $"ID: {chamadoId}, Título: {titulo ?? "Título não informado"}, Status: {status ?? "Status não informado"}{Environment.NewLine}";
+
                     Console.WriteLine($"Chamado ID: {chamadoId} processado com sucesso.");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Erro ao processar chamado: {ex.Message}");
-                    await Exceptions.HandleErrorAsync(ex);
+                    // Enviar informações do erro para o Exceptions.cs
+                    var chamadoId = chamado["id"]?.ToString();
+                    var titulo = chamado["titulo"]?.ToString();
+                    var categoria = chamado["categoria"]?.ToString();
+                    var status = "Erro";
+
+                    await Exceptions.HandleErrorAsync(ex, chamadoId, titulo, categoria, status);
                 }
             }
-            // Logar os chamados processados
-            string timestampFinal = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            LogHandler.LogChamados(timestampFinal, totalNaoFinalizados, totalPendentes, detalhesChamados);
+
+            // Após o loop, registrar o log geral
+            string detalhesChamadosLog = string.Join(Environment.NewLine, chamados.Select(chamado =>
+               LogHandler.FormatarDetalhesChamado(
+                   chamado["id"]?.ToString(),
+                   chamado["titulo"]?.ToString(),
+                   chamado["categoria"]?.ToString(),
+                   chamado["status"]?.ToString())
+            ));
+
+            LogHandler.LogChamados(DateTime.Now.ToString("yyyyMMdd_HHmmss"), chamados.Count, chamados.Count - totalNaoAbertos, detalhesChamados, possuiErro: false);
 
             Console.WriteLine("Processamento de chamados concluído.");
         }
         catch (Exception ex)
         {
-            string errorMessage = $"Erro ao processar chamado: {ex.Message}";
+            string errorMessage = $"Erro ao processar chamados gerais: {ex.Message}";
             Console.WriteLine(errorMessage);
-            LogHandler.LogChamados(DateTime.Now.ToString("yyyyMMdd_HHmmss"), 0, 0, errorMessage);
-            await Exceptions.HandleErrorAsync(ex);
+
+            // Adicionar log geral com erro
+            LogHandler.LogChamados(DateTime.Now.ToString("yyyyMMdd_HHmmss"), 0, 0, errorMessage, possuiErro: true);
+
+            // Registrar o erro no Exceptions.cs
+            await Exceptions.HandleErrorAsync(
+                ex,
+                contextoExecucao,
+                titulo: "Desconhecido",
+                categoria: "Desconhecida",
+                status: "Erro Geral"
+            );
         }
         finally
         {

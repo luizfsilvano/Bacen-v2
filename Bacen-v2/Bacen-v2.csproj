@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Utils\Logger.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Data\logs\" />
     <Folder Include="Data\processed\" />
   </ItemGroup>

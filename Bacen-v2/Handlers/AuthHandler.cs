@@ -35,7 +35,7 @@ namespace Bacen_v2.Handlers
                     password = _config.ServiceDesk.Password
                 };
 
-                Logger.Log($"Tentando autenticar no Service Desk com a URL: {url}");
+                Console.WriteLine($"Tentando autenticar no Service Desk com a URL: {url}");
 
                 var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
                 _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
@@ -87,7 +87,7 @@ namespace Bacen_v2.Handlers
 
                 if (UserGroupId == 0)
                 {
-                    Logger.Log("Nenhum grupo de atendimento encontrado no retorno.");
+                    Console.WriteLine("Nenhum grupo de atendimento encontrado no retorno.");
                     throw new Exception("Falha ao capturar o ID do Grupo de Atendimento.");
                 }
 
@@ -129,7 +129,7 @@ namespace Bacen_v2.Handlers
             }
             catch (Exception ex)
             {
-                Logger.Log($"Erro no Login: {ex.Message}");
+                Console.WriteLine($"Erro no Login: {ex.Message}");
                 throw;
             }
         }

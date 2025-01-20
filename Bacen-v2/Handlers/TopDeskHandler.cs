@@ -10,6 +10,7 @@ namespace Bacen_v2.Handlers
         private readonly Dictionary<string, Dictionary<string, string>> _fieldMappings;
         private readonly TopDeskAuth _auth;
 
+
         public TopDeskHandler(string linksJsonPath, string fieldMappingsJsonPath, TopDeskAuth auth)
         {
             // Carregar links do JSON
@@ -43,10 +44,13 @@ namespace Bacen_v2.Handlers
             string customColumns,
             string notes,
             string identificador,
+            SearchHandler searchHandler,
             List<string> anexoPaths = null,
             int maxRetries = 3
         )
         {
+
+
             if (!_links.TryGetValue(tipoChamado, out string url))
             {
                 Console.WriteLine($"Tipo de chamado '{tipoChamado}' não encontrado.");
@@ -184,6 +188,9 @@ namespace Bacen_v2.Handlers
                                 Console.WriteLine($"Tentando anexar: {Path.GetFileName(anexo)}");
                                 await frameLocator.Locator("input[type=file]").SetInputFilesAsync(new[] { anexo });
                                 Console.WriteLine($"Arquivo anexado: {Path.GetFileName(anexo)}");
+                                    
+                                // sleep para aguardar o upload do arquivo
+                                await Task.Delay(5000);
 
                             }
                             catch (Exception ex)
@@ -255,10 +262,20 @@ namespace Bacen_v2.Handlers
                         if (clipboardContent.Contains("An error occurred while trying to attach the file"))
                         {
                             Console.WriteLine("Erro: Um erro ocorreu ao tentar anexar o arquivo no chamado");
+                            Console.WriteLine("Verificando se o chamado já foi aberto...");
 
-                            if (attempt < maxRetries)
+
+                            // Executa a busca por identificador único
+                            var protocoloEncontrado = await searchHandler.PesquisarChamadoAsync(identificador, id);
+
+                            if (protocoloEncontrado != null)
                             {
-                                Console.WriteLine("Tentando novamente...");
+                                Console.WriteLine($"Chamado já aberto com o protocolo: {protocoloEncontrado}");
+                                return protocoloEncontrado;
+                            }
+                            else if (attempt < maxRetries)
+                            {
+                                Console.WriteLine("Chamado não encontrado, tentando novamente...");
                                 continue;
                             }
                         }

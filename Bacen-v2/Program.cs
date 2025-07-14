@@ -22,6 +22,7 @@ class Program
         Microsoft.Playwright.Program.Main(new[] { "install", "chromium" });
 
         CreateConfigFileIfNotExists();
+
         _ = WebSocketServer.StartServer(); // Iniciar o WebSocket Server em segundo plano
 
         // Configurar nível de log para TensorFlow Lite

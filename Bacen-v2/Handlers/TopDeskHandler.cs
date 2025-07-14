@@ -4,6 +4,7 @@
 
     namespace Bacen_v2.Handlers
     {
+
         public class TopDeskHandler
         {
             private readonly Dictionary<string, string> _links;
@@ -180,6 +181,7 @@
                         if (anexoPaths != null && anexoPaths.Any())
                         {
                             var falhas = new List<string>(); // Declaração da variável "falhas"
+
 
                             foreach (var anexo in anexoPaths)
                             {

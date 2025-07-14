@@ -42,7 +42,7 @@ namespace Bacen_v2.Handlers
                 await _authenticatedPage.ClickAsync("input#login");
 
                 // Sleep para aguardar o redirecionamento
-                await Task.Delay(15000);
+                await Task.Delay(20000);
 
                 // Aguarda um indicador de sucesso na página
                 var loggedIn = await _authenticatedPage.Locator("text=Seja bem-vindo(a)").IsVisibleAsync();

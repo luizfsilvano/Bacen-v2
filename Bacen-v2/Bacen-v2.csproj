@@ -6,7 +6,20 @@
     <RootNamespace>Bacen_v2</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
   </PropertyGroup>
+	
+  <PropertyGroup>
+    <PublishChromeDriver>true</PublishChromeDriver>
+    <WebDriverPlatform>win32</WebDriverPlatform>
+  </PropertyGroup>
+
+	<PropertyGroup>
+  <PlaywrightPlatform>win</PlaywrightPlatform>
+</PropertyGroup>
+
 
   <ItemGroup>
     <Compile Remove="Utils\Logger.cs" />
@@ -18,13 +31,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.2" />
     <PackageReference Include="Microsoft.Office.Interop.Outlook" Version="15.0.4797.1004" />
-    <PackageReference Include="Microsoft.Playwright" Version="1.49.0" />
-    <PackageReference Include="Nager.Date" Version="2.7.2" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.50.0" />
+    <PackageReference Include="Nager.Date" Version="2.8.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Selenium.WebDriver" Version="4.27.0" />
-    <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="131.0.6778.8700" />
+    <PackageReference Include="Selenium.WebDriver" Version="4.28.0" />
+    <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="137.0.7151.7000" />
   </ItemGroup>
 
   <ItemGroup>
@@ -38,5 +51,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="playwright\.playwright\**\*">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 
 </Project>

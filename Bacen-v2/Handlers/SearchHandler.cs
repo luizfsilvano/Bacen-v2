@@ -48,6 +48,10 @@ namespace Bacen_v2.Handlers
                 await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
                 await Task.Delay(5000);
 
+                // Espera o foco na página
+                await page.BringToFrontAsync();
+                await Task.Delay(1000);
+
                 // Simular Ctrl+A, Ctrl+C
                 await page.Keyboard.PressAsync("Control+a");
                 await page.Keyboard.PressAsync("Control+c");

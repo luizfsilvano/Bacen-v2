@@ -2,7 +2,9 @@
 using Bacen_v2.Handlers;
 using Bacen_v2.Utils;
 using Microsoft.Playwright;
+using Newtonsoft.Json.Linq;
 using OpenQA.Selenium.Chrome;
+using Newtonsoft.Json;
 
 class Program
 {
@@ -16,6 +18,10 @@ class Program
 
     static async Task Main(string[] args)
     {
+        // Instala os navegadores caso ainda não estejam presentes
+        Microsoft.Playwright.Program.Main(new[] { "install", "chromium" });
+
+        CreateConfigFileIfNotExists();
         _ = WebSocketServer.StartServer(); // Iniciar o WebSocket Server em segundo plano
 
         // Configurar nível de log para TensorFlow Lite
@@ -37,13 +43,26 @@ class Program
         // Configurar opções do Chrome do contexto do Selenium
         var seleniumTask = Task.Run(() =>
         {
+            // 1) Desabilita o Selenium Manager
+            Environment.SetEnvironmentVariable("SELENIUM_MANAGER_DISABLED", "1");
+
+            // 2) Cria as opções do Chrome
             var options = new ChromeOptions();
             options.AddArgument("--disable-gpu");
             options.AddArgument("--no-sandbox");
             options.AddArgument("--disable-dev-shm-usage");
             options.AddArgument("--headless");
             options.AddArgument("log-level=3");
-            driver = new ChromeDriver(options);
+
+            // 3) Pega o diretório de saída da aplicação (onde está o chromedriver.exe)
+            var driverFolder = AppDomain.CurrentDomain.BaseDirectory;
+
+            // 4) Cria o serviço apontando para aquela pasta
+            var chromeService = ChromeDriverService.CreateDefaultService(driverFolder);
+            chromeService.HideCommandPromptWindow = true;  // opcional
+
+            // 5) Instancia o driver utilizando o serviço customizado
+            driver = new ChromeDriver(chromeService, options);
         });
 
         // Inicializar contexto do Playwright
@@ -93,6 +112,65 @@ class Program
             await playwrightBrowser.CloseAsync();
         }
     }
+    private static void CreateConfigFileIfNotExists()
+    {
+        var basePath = AppDomain.CurrentDomain.BaseDirectory;
+        var configPath = Path.Combine(basePath,"Configs", "appsettings.json");
+        var configDirectory = Path.GetDirectoryName(configPath);
+
+        // Criar diretório se não existir
+        if (!Directory.Exists(configDirectory))
+        {
+            Directory.CreateDirectory(configDirectory);
+        }
+
+        // Criar arquivo se não existir
+        if (!File.Exists(configPath))
+        {
+            Console.WriteLine("Configurações não encontradas. Vamos criar um novo arquivo de configuração:");
+
+            var config = new JObject(
+                new JProperty("Environment", GetEnvironmentChoice()),
+                new JProperty("ServiceDesk", new JObject(
+                    new JProperty("SandboxUrl", "https://servicedesksandbox.openfinancebrasil.org.br"),
+                    new JProperty("ProductionUrl", "https://servicedesk.openfinancebrasil.org.br"),
+                    new JProperty("Username", GetInput("ServiceDesk Username: ")),
+                    new JProperty("Password", GetInput("ServiceDesk Password: ")),
+                    new JProperty("userID", "1874")
+                )),
+                new JProperty("TopDesk", new JObject(
+                    new JProperty("BaseUrl", "https://atendimento.sisbr.coop.br"),
+                    new JProperty("Username", GetInput("TopDesk Username: ")),
+                    new JProperty("Password", GetInput("TopDesk Password: "))
+                ))
+            );
+
+            File.WriteAllText(configPath, config.ToString(Formatting.Indented));
+            Console.WriteLine("\nArquivo de configuração criado com sucesso em Configs/appsettings.json");
+        }
+    }
+
+    private static string GetEnvironmentChoice()
+    {
+        Console.WriteLine("\nEscolha o ambiente (digite 1 ou 2):");
+        Console.WriteLine("1 - Production");
+        Console.WriteLine("2 - Sandbox");
+
+        while (true)
+        {
+            var input = Console.ReadLine();
+            if (input == "1") return "Production";
+            if (input == "2") return "Sandbox";
+            Console.WriteLine("Opção inválida. Digite 1 ou 2:");
+        }
+    }
+
+    private static string GetInput(string prompt)
+    {
+        Console.Write(prompt);
+        return Console.ReadLine();
+    }
+
 
     private static async Task Automacao()
     {
@@ -103,7 +181,7 @@ class Program
         }
 
         isRunning = true; // Sinaliza que a execução começou
-
+        
         Console.Clear();
         Console.WriteLine(@"
   ____                              ___  
@@ -118,8 +196,13 @@ class Program
         try
         {
             // Carregar configurações
-            var config = ConfigLoader.Load("Configs/appsettings.json");
+            var basePath = AppDomain.CurrentDomain.BaseDirectory;
+            var configPath = Path.Combine(basePath, "Configs", "appsettings.json");
+            var configDirectory = Path.GetDirectoryName(configPath);
+            var config = ConfigLoader.Load(configPath);
             Console.WriteLine("Configurações carregadas com sucesso.");
+
+            Console.WriteLine($"Caminho das configurações {configPath}");
 
             Console.WriteLine($"Aplicação iniciada Dia {DateTime.Now}.");
 
@@ -134,6 +217,7 @@ class Program
             await topDeskAuth.LoginAsync();
             var topDeskHandler = new TopDeskHandler("Configs/topdesk_links.json", "Configs/chamados.json", topDeskAuth);
             var searchHandler = new SearchHandler(topDeskAuth, config);
+            bool isUpdate = false;
 
             // Obter chamados com status "Encaminhado N2 Atendimento"
             Console.WriteLine("Obtendo chamados com status 'Encaminhado N2 Atendimento'...");
@@ -171,6 +255,7 @@ class Program
                     if (string.IsNullOrEmpty(chamadoId))
                     {
                         Console.WriteLine("Chamado sem ID. Pulando...");
+                       
                         continue;
                     }
 
@@ -196,16 +281,17 @@ class Program
                     var customColumns = detalhesChamado["customColumns"]?.ToString();
                     var statusProcessamento = "Sucesso";
 
-
                     // Gerar identificador único do chamado gerado automaticamente:
                     string identificador = searchHandler.GerarIdentificador(int.Parse(chamadoId));
 
+                    // Verificar se é atualização
                     if (serviceDeskHandler.VerificarChamadoAberto(notas) == true)
                     {
-                        // pular para o proximo chamado
+                        // Pular para o próximo chamado
                         Console.ForegroundColor = ConsoleColor.Blue;
                         Console.WriteLine($"\nℹ️ ATUALIZAÇÃO NO CHAMADO {chamadoId}!\n");
                         Console.ResetColor();
+                        isUpdate = true;
                         continue;
                     }
 
@@ -221,7 +307,6 @@ class Program
                         var fileId = anexo["fileId"]?.ToString();
                         var fileName = anexo["fileName"]?.ToString();
 
-
                         if (!string.IsNullOrEmpty(fileId) && !string.IsNullOrEmpty(fileName))
                         {
                             Console.WriteLine($"Baixando anexo: {fileName}");
@@ -233,7 +318,6 @@ class Program
                         }
                     }
 
-
                     // Abrir chamado no TopDesk
                     var numeroProtocolo = await topDeskHandler.AbrirChamadoAsync(categoria, titulo, id, descricao, de, usuarioSolicitante, sla, customColumns, notas, identificador, searchHandler, anexoPaths);
 
@@ -243,31 +327,68 @@ class Program
                         // Adicionar número do protocolo às notas do chamado
                         await serviceDeskHandler.AdicionarNumeroProtocoloAsync(chamadoId, numeroProtocolo, authHandler.SessionId, authHandler.GocSession);
 
+                        // Registrar a abertura do chamado no histórico CSV
+                        Historic.AddRecord(DateTime.Now, chamadoId, numeroProtocolo, identificador, "abertura");
+
                         // Atualizar informações no SD
                         await serviceDeskHandler.AtualizarChamadoAsync(id, authHandler.SessionId, authHandler.GocSession);
 
+                        Console.WriteLine($"Chamado ID: {chamadoId} registrado no histórico com sucesso.");
                     }
                     else
                     {
                         Console.WriteLine($"Falha ao identificar número do protocolo. Executando busca pelo identificador único do chamado: {identificador}");
 
-                        // Executa a busca por identificador único
-                        var protocoloEncontrado = await searchHandler.PesquisarChamadoAsync(identificador, id);
-
-                        if (protocoloEncontrado == null)
+                        // Em cada iteração do seu loop:
+                        if (string.IsNullOrWhiteSpace(numeroProtocolo))
                         {
-                            Console.WriteLine($"Número do protocolo não encontrado para o chamado ID: {chamadoId}. Colocando nas notas o identificador único no ServiceDesk e Pulando...");
-                            await serviceDeskHandler.AdicionarNumeroProtocoloAsync(chamadoId, identificador, authHandler.SessionId, authHandler.GocSession);
+                            // Indica erro ao não obter protocolo
+                            Console.WriteLine($"Erro: número do protocolo não gerado para o chamado ID: {chamadoId}.");
+
+                            // Registrar erro no histórico CSV
+                            Historic.AddRecord(
+                                DateTime.Now,
+                                chamadoId,          // ID do chamado
+                                null,               // sem protocolo
+                                null,               // sem identificador
+                                "erro_protocolo"    // tipo de registro
+                            );
+
+                            // pular para o próximo chamado
                             continue;
                         }
-                        else
-                        {
-                            Console.WriteLine("Número do protocolo encontrado com sucesso.");
-                            await serviceDeskHandler.AdicionarNumeroProtocoloAsync(chamadoId, protocoloEncontrado, authHandler.SessionId, authHandler.GocSession);
-                        }
+
+                        // Se chegou aqui, tem protocolo válido
+
+                        // 1) Adicionar número do protocolo às notas do chamado
+                        await serviceDeskHandler.AdicionarNumeroProtocoloAsync(
+                            chamadoId,
+                            numeroProtocolo,
+                            authHandler.SessionId,
+                            authHandler.GocSession
+                        );
+
+                        // 2) Registrar a abertura do chamado no histórico CSV
+                        Historic.AddRecord(
+                            DateTime.Now,
+                            chamadoId,
+                            numeroProtocolo,
+                            null,           // não usamos mais o identificador
+                            "abertura"
+                        );
+
+                        // 3) Atualizar informações no ServiceDesk
+                        await serviceDeskHandler.AtualizarChamadoAsync(
+                            id,
+                            authHandler.SessionId,
+                            authHandler.GocSession
+                        );
+
+                        Console.WriteLine($"Chamado ID: {chamadoId} registrado no histórico com sucesso.");
+
                     }
 
-                    detalhesChamados += $"ID: {chamadoId}, Título: {titulo ?? "Título não informado"}, Status: {status ?? "Status não informado"}{Environment.NewLine}";
+                        detalhesChamados += $"ID: {chamadoId}, Título: {titulo ?? "Título não informado"}, Status: {status ?? "Status não informado"}{Environment.NewLine}";
 
                     Console.WriteLine($"Chamado ID: {chamadoId} processado com sucesso.");
                 }
@@ -281,7 +402,7 @@ class Program
 
                     await Exceptions.HandleErrorAsync(ex, chamadoId, titulo, categoria, status);
                 }
-            }
+        }
 
             // Após o loop, registrar o log geral
             string detalhesChamadosLog = string.Join(Environment.NewLine, chamados.Select(chamado =>
@@ -292,7 +413,7 @@ class Program
                    chamado["status"]?.ToString())
             ));
 
-            LogHandler.LogChamados(DateTime.Now.ToString("yyyyMMdd_HHmmss"), chamados.Count, chamados.Count - totalNaoAbertos, detalhesChamados, possuiErro: false);
+            LogHandler.LogChamados(DateTime.Now.ToString("yyyyMMdd_HHmmss"), chamados.Count, chamados.Count - totalNaoAbertos, detalhesChamados, possuiErro: false, isUpdate);
 
             Console.WriteLine("Processamento de chamados concluído.");
         }

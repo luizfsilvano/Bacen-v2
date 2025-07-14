@@ -17,7 +17,7 @@ namespace Bacen_v2.Handlers
 
         public string GerarIdentificador(int numeroChamado)
         {
-            // Gerar números aleatórios
+            // Gerar nÃºmeros aleatÃ³rios
             byte[] randomNumber = new byte[4];
             using (var rng = RandomNumberGenerator.Create())
             {
@@ -38,57 +38,62 @@ namespace Bacen_v2.Handlers
         {
             try
             {
-                var page = await _auth.GetAuthenticatedPageAsync(); // Obtém a página autenticada
+                var page = await _auth.GetAuthenticatedPageAsync(); // ObtÃ©m a pÃ¡gina autenticada
                 string searchUrl = $"{_baseUrl}/tas/public/ssp/content/search?q={identificador}";
 
                 Console.WriteLine($"Iniciando pesquisa pelo identificador: {identificador}");
                 await page.GotoAsync(searchUrl);
 
-                // Aguarda até que os resultados sejam carregados
+                // Aguarda atÃ© que os resultados sejam carregados
                 await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
                 await Task.Delay(5000);
+
+
+                // Espera o foco na pÃ¡gina
+                await page.BringToFrontAsync();
+                await Task.Delay(1000);
 
                 // Simular Ctrl+A, Ctrl+C
                 await page.Keyboard.PressAsync("Control+a");
                 await page.Keyboard.PressAsync("Control+c");
 
-                // Recuperar o conteúdo da área de transferência
+                // Recuperar o conteÃºdo da Ã¡rea de transferÃªncia
                 var results = await page.EvaluateAsync<string>("() => navigator.clipboard.readText()");
 
-                // Procurar número do protocolo do chamado pelo regex
+                // Procurar nÃºmero do protocolo do chamado pelo regex
                 var protocolRegex = new System.Text.RegularExpressions.Regex(@"I\d{4}-\d{6}");
                 var protocolMatch = protocolRegex.Match(results);
                 if (protocolMatch.Success)
                 {
                     string numeroProtocolo = protocolMatch.Value;
-                    Console.WriteLine($"Número do protocolo encontrado: {numeroProtocolo}");
-                    // Verificar se o número do chamado (#67644) está correto
+                    Console.WriteLine($"NÃºmero do protocolo encontrado: {numeroProtocolo}");
+                    // Verificar se o nÃºmero do chamado (#67644) estÃ¡ correto
                     var chamadoRegex = new System.Text.RegularExpressions.Regex(@"#\d{5}");
                     var chamadoMatch = chamadoRegex.Match(results);
 
                     if (chamadoMatch.Success)
                     {
-                        string numeroChamadoEncontrado = chamadoMatch.Value.Trim('#'); // Remove o "#" do número
+                        string numeroChamadoEncontrado = chamadoMatch.Value.Trim('#'); // Remove o "#" do nÃºmero
                         if (numeroChamadoEncontrado == numeroChamado)
                         {
-                            Console.WriteLine($"Número do chamado verificado com sucesso: {numeroChamadoEncontrado}");
+                            Console.WriteLine($"NÃºmero do chamado verificado com sucesso: {numeroChamadoEncontrado}");
                             return numeroProtocolo;
                         }
                         else
                         {
-                            Console.WriteLine($"Número do chamado não corresponde. Esperado: {numeroChamado}, Encontrado: {numeroChamadoEncontrado}");
+                            Console.WriteLine($"NÃºmero do chamado nÃ£o corresponde. Esperado: {numeroChamado}, Encontrado: {numeroChamadoEncontrado}");
                             return null;
                         }
                     }
                     else
                     {
-                        Console.WriteLine("Número do chamado não encontrado no conteúdo capturado.");
+                        Console.WriteLine("NÃºmero do chamado nÃ£o encontrado no conteÃºdo capturado.");
                         return null;
                     }
                 }
                 else
                 {
-                    Console.WriteLine("Número do protocolo não encontrado pelo identificador único.");
+                    Console.WriteLine("NÃºmero do protocolo nÃ£o encontrado pelo identificador Ãºnico.");
                     return null;
                 }
             }

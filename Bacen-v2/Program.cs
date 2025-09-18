@@ -51,7 +51,7 @@ class Program
             options.AddArgument("--disable-gpu");
             options.AddArgument("--no-sandbox");
             options.AddArgument("--disable-dev-shm-usage");
-            options.AddArgument("--headless");
+            //options.AddArgument("--headless");
             options.AddArgument("log-level=3");
 
             // 3) Pega o diretório de saída da aplicação (onde está o chromedriver.exe)
@@ -71,7 +71,7 @@ class Program
             var playwright = await Playwright.CreateAsync();
             playwrightBrowser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
             {
-                Headless = true  // Mude para true ou false para visualizar o navegador.
+                Headless = false  // Mude para true ou false para visualizar o navegador.
             });
         });
 
@@ -337,7 +337,9 @@ class Program
                     }
                     else
                     {
-                        Console.WriteLine($"Falha ao identificar número do protocolo. Executando busca pelo identificador único do chamado: {identificador}");
+                        Console.WriteLine($"Falha ao identificar número do protocolo.");
+
+                        // TODO: Implementação melhorada da busca pelo identificador Unico do chamado
 
                         // Em cada iteração do seu loop:
                         if (string.IsNullOrWhiteSpace(numeroProtocolo))

@@ -217,8 +217,9 @@
                         await frameLocator.Locator("input#button_submit").ClickAsync();
 
                         // Aguardar o redirecionamento
+                        await Task.Delay(10000);
                         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-                        await Task.Delay(5000);
+                        await Task.Delay(15000);
 
                         // Simular Ctrl+A
                         await page.Keyboard.PressAsync("Control+a");

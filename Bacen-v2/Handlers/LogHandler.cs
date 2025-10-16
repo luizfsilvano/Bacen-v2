@@ -8,6 +8,7 @@ namespace Bacen_v2.Utils
         private static string LogsDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "logs");
 
         public static void LogChamados(string timestamp, int totalEncaminhados, int totalNaoAbertos, string detalhesChamados, bool possuiErro, bool isUpdate = false)
+
         {
             try
             {
@@ -17,6 +18,7 @@ namespace Bacen_v2.Utils
                 // Adicionar "-ERRO" no nome do arquivo, se possuir erro
                 string suffix = possuiErro ? "-ERRO" : isUpdate ? "-ATUALIZAÇÃO" : string.Empty;
                 string logFileName = $"log_{timestamp}{suffix}.log";
+              
                 string logFilePath = Path.Combine(LogsDirectory, logFileName);
 
                 using (StreamWriter sw = new StreamWriter(logFilePath))

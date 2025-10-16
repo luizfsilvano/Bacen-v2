@@ -29,7 +29,7 @@ namespace Bacen_v2.Handlers
             try
             {
                 // Fazer a requisição GET para obter os chamados
-                var url = $"{_baseUrl}/api/v1/sr?assigned_group=36"; // Adicione o grupo correto
+                var url = $"{_baseUrl}/api/v1/sr?assigned_group=36";
                 var response = await _httpClient.GetAsync(url);
 
                 if (!response.IsSuccessStatusCode)
@@ -97,7 +97,7 @@ namespace Bacen_v2.Handlers
                     ["usuarioSolicitante"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "request_user")?["valueCaption"],
                     ["prioridade"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "priority")?["valueCaption"],
                     ["categoria"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "problem_type")?["valueCaption"],
-                    ["sla"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "CustomColumn118sr")?["valueCaption"],
+                    ["sla"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "due_date")?["valueCaption"],
                     ["notas"] = chamadoDetalhes["info"]?.FirstOrDefault(info => info["key"]?.ToString() == "notes")?["value"]
                 };
 

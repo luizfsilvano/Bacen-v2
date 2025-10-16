@@ -338,7 +338,9 @@ class Program
                     }
                     else
                     {
-                        Console.WriteLine($"Falha ao identificar número do protocolo. Executando busca pelo identificador único do chamado: {identificador}");
+                        Console.WriteLine($"Falha ao identificar número do protocolo.");
+
+                        // TODO: Implementação melhorada da busca pelo identificador Unico do chamado
 
                         // Em cada iteração do seu loop:
                         if (string.IsNullOrWhiteSpace(numeroProtocolo))
